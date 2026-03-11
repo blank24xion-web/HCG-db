@@ -153,16 +153,36 @@ def parse_xlsx(path):
                                 if col == 2: row_to_main[srow] = z.read(mp)
                                 elif col == 9: row_to_alt[srow] = z.read(mp)
 
+        # Detect columns from header row dynamically
+        header = rows_data.get(1, {})
+        cm = {}  # col_map: field -> column letter
+        for col_letter, val in header.items():
+            n = val.lower().strip()
+            if 'setcode' in n:            cm.setdefault('setcode', col_letter)
+            elif 'card name' in n or n == 'name': cm.setdefault('name', col_letter)
+            elif n == 'type':             cm.setdefault('type',    col_letter)
+            elif n == 'rarity':           cm.setdefault('rarity',  col_letter)
+            elif n in ('color','colour'): cm.setdefault('color',   col_letter)
+            elif 'life' in n or 'hp' in n: cm.setdefault('life_hp', col_letter)
+            elif n in ('tags','tag'):     cm.setdefault('tags',    col_letter)
+            elif n in ('text','effect') or 'skill' in n: cm.setdefault('text', col_letter)
+
+        # Fallback to known hBP01 positions if header detection misses anything
+        defaults = {'setcode':'A','name':'B','type':'D','rarity':'E',
+                    'color':'F','life_hp':'G','tags':'H','text':'I'}
+        for k, v in defaults.items():
+            cm.setdefault(k, v)
+
         for rn in sorted(rows_data.keys()):
             if rn == 1: continue
             r = rows_data[rn]
-            if not r.get('A'): continue
+            if not r.get(cm['setcode']): continue
             cards.append({
-                'setcode': r.get('A',''), 'name':    r.get('B',''),
-                'type':    r.get('D',''), 'rarity':  r.get('E',''),
-                'color':   r.get('F',''), 'life_hp': r.get('G',''),
-                'tags':    r.get('H',''), 'text':    r.get('I',''),
-                '_img':    row_to_main.get(rn), '_alt': row_to_alt.get(rn),
+                'setcode': r.get(cm['setcode'],''), 'name':    r.get(cm['name'],   ''),
+                'type':    r.get(cm['type'],   ''), 'rarity':  r.get(cm['rarity'], ''),
+                'color':   r.get(cm['color'],  ''), 'life_hp': r.get(cm['life_hp'],''),
+                'tags':    r.get(cm['tags'],   ''), 'text':    r.get(cm['text'],   ''),
+                '_img':    row_to_main.get(rn),     '_alt':    row_to_alt.get(rn),
             })
     return cards
 
