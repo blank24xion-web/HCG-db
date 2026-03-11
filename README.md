@@ -56,49 +56,50 @@ You now have a local copy of the repo on your computer that syncs to GitHub.
 ### Step 1: Download the XLSX from the community Google Sheet
 
 - Open the community Google Sheet
-- Navigate to the sheet for the set you want (e.g. hBP02)
-- If the sheet is too large, split it into parts manually (select rows, copy to a new sheet, download each)
+- Navigate to the tab for the set you want (e.g. hBP02)
+- If the sheet is too large to download in one go, split it manually by selecting rows, copying to a new sheet, and downloading each part separately
 - File → Download → Microsoft Excel (.xlsx)
-- Repeat for each part
+- Save each part into a `source_sheets/` folder inside your repo
 
 ### Step 2: Run the parser
 
-Open a terminal (Command Prompt on Windows, Terminal on Mac) and navigate to your local repo folder:
+Open a terminal and navigate to your repo folder:
 
-```bash
-cd path/to/your/repo
+**Windows (Command Prompt):**
+```
+cd C:/Users/YourName/Documents/hololive-ocg
 ```
 
-Run the parser with all your XLSX files:
-
-```bash
-# Single set
-python parse_hololive_xlsx.py hBP02_Part1.xlsx -o cards.json
-
-# Multiple parts — merges automatically, removes duplicates
-python parse_hololive_xlsx.py hBP02_Part1.xlsx hBP02_Part2.xlsx hBP02_Part3.xlsx -o cards.json
-
-# Adding a new set ON TOP of existing cards (pass old cards.json as well? No — just pass all XLSX files together)
-# Best practice: keep all your XLSX files in a folder called "source_sheets/"
-python parse_hololive_xlsx.py source_sheets/*.xlsx -o cards.json
+**Mac (Terminal):**
+```
+cd ~/Documents/hololive-ocg
 ```
 
-The script will:
-- Extract all card text, types, colors, tags, rarities
-- Extract all card images (standard + alt art)
-- Compress images automatically (~90% size reduction)
-- Save everything to `cards.json` and the `images/` folder
-- Skip duplicate setcodes automatically
+Then run the parser with your XLSX files:
+
+```bash
+# Single file
+python parse_hololive_xlsx.py source_sheets/hBP02_Part1.xlsx
+
+# Multiple parts of one set (merged + deduplicated automatically)
+python parse_hololive_xlsx.py source_sheets/hBP02_Part1.xlsx source_sheets/hBP02_Part2.xlsx
+
+# Multiple sets at once — always pass ALL your files together
+python parse_hololive_xlsx.py source_sheets/hBP01_Part1.xlsx source_sheets/hBP01_Part2.xlsx source_sheets/hBP02_Part1.xlsx source_sheets/hBP02_Part2.xlsx
+```
+
+The script outputs:
+- `cards.json` — all card text data, image paths, and visual fingerprints for the scanner
+- `images/` — compressed card images (~50–100KB each)
 
 ### Step 3: Push to GitHub
 
 - Open **GitHub Desktop**
-- You'll see all the changed/new files listed on the left
-- Write a short summary in the bottom left (e.g. "Add hBP02")
-- Click **Commit to main**
-- Click **Push origin** (top right)
+- You'll see the updated `cards.json` and any new images listed as changes
+- Write a short summary (e.g. "Add hBP02")
+- Click **Commit to main** → **Push origin**
 
-GitHub Pages will update automatically within 1–2 minutes.
+Your live site updates within ~2 minutes.
 
 ---
 
@@ -106,13 +107,14 @@ GitHub Pages will update automatically within 1–2 minutes.
 
 - **Filters** are built dynamically — any new card type, tag, color, or set in the database automatically gets a filter button. No code changes needed.
 - **Search** checks card name (JP + EN), setcode, card text, tags, and type simultaneously.
-- **Scanner** opens a live camera feed. Tap 📷 to capture a frame. It runs OCR and tries to match either the setcode (most reliable — e.g. `hBP01-042`) or the English card name. On a match it opens the card detail directly.
+- **Scanner** opens a live camera feed. Tap 📷 to capture a frame. It matches the card art visually using a perceptual fingerprint — no text reading needed. On a confident match it opens the card detail directly.
 
 ### Scanner tips
-- Setcodes (e.g. `hBP01-042`) are the most reliable thing to point at — they're unambiguous
-- Good lighting makes a big difference
-- Hold the card steady when you tap capture
+- Aim at the **card art** so it fills most of the viewfinder — the scanner matches by visual appearance, not text
+- Good, even lighting with no glare gives the best results
+- Hold the card steady when you tap capture — motion blur will hurt accuracy
 - Works in Safari on iPhone — no app install needed
+- The scanner compares the camera frame against every card's stored visual fingerprint (perceptual hash) and finds the closest match
 
 ---
 

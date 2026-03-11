@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>hololive OCG · Card Database</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -624,7 +623,7 @@
     <div class="scanner-bracket-br"></div>
   </div>
   <canvas id="scanCanvas"></canvas>
-  <div class="scanner-hint">Aim at the card name or setcode (e.g. hBP01-004), then tap capture</div>
+  <div class="scanner-hint">Aim at the card art so it fills the frame, then tap capture</div>
   <div class="scanner-status" id="scanStatus">Ready</div>
   <div class="scanner-actions">
     <button class="scanner-capture-btn" id="captureBtn">📷</button>
@@ -648,6 +647,7 @@ async function loadCards() {
   const res = await fetch('cards.json');
   CARDS = await res.json();
   buildFilters();
+  buildHashIndex();
   renderGrid();
   const setCodes = [...new Set(CARDS.map(c => c.setcode.split('-')[0]))];
   document.getElementById('setLabel').textContent = setCodes.join(' · ');
@@ -672,7 +672,6 @@ let activeFilters = {};  // { filterKey: Set of active values }
 function buildFilters() {
   const colors  = [...new Set(CARDS.map(c => c.color).filter(Boolean).filter(c => c !== 'None'))].sort();
   const types   = [...new Set(CARDS.map(c => c.type).filter(Boolean))].sort();
-  const tags    = [...new Set(CARDS.flatMap(getCardTags))].sort();
   const sets    = [...new Set(CARDS.map(c => c.setcode.split('-')[0]))].sort();
   const rarities= [...new Set(CARDS.map(c => c.rarity).filter(Boolean))].sort();
 
@@ -680,11 +679,10 @@ function buildFilters() {
   area.innerHTML = '';
 
   const sections = [
-    { key: 'color',  label: 'Color',   values: colors,   btnClass: c => `fc-${c}` },
-    { key: 'type',   label: 'Type',    values: types,    btnClass: () => '' },
-    { key: 'rarity', label: 'Rarity',  values: rarities, btnClass: () => '' },
-    { key: 'tag',    label: 'Tag',     values: tags,     btnClass: () => '' },
-    { key: 'set',    label: 'Set',     values: sets,     btnClass: () => '' },
+    { key: 'color',  label: 'Color',  values: colors,   btnClass: c => `fc-${c}` },
+    { key: 'type',   label: 'Type',   values: types,    btnClass: () => '' },
+    { key: 'rarity', label: 'Rarity', values: rarities, btnClass: () => '' },
+    { key: 'set',    label: 'Set',    values: sets,     btnClass: () => '' },
   ];
 
   sections.forEach(({ key, label, values, btnClass }) => {
@@ -738,16 +736,11 @@ function toggleFilter(key, val, btn) {
 function cardMatchesFilters(card) {
   const { color, type, rarity, setcode } = card;
   const cardSet = setcode.split('-')[0];
-  const cardTags = getCardTags(card);
 
   if (activeFilters.color?.size  && !activeFilters.color.has(color))   return false;
   if (activeFilters.type?.size   && !activeFilters.type.has(type))     return false;
   if (activeFilters.rarity?.size && !activeFilters.rarity.has(rarity)) return false;
   if (activeFilters.set?.size    && !activeFilters.set.has(cardSet))   return false;
-  if (activeFilters.tag?.size) {
-    const hasAll = [...activeFilters.tag].every(t => cardTags.includes(t));
-    if (!hasAll) return false;
-  }
   return true;
 }
 
@@ -880,16 +873,84 @@ document.getElementById('modalOverlay').addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
+// ── Perceptual hash (matches parse_hololive_xlsx.py exactly) ──────────────────
+function computePhash(imageData, hashSize = 8) {
+  const n = hashSize * 4;
+
+  // Draw to offscreen canvas at n×n greyscale
+  const off = document.createElement('canvas');
+  off.width = off.height = n;
+  const ctx = off.getContext('2d');
+  ctx.drawImage(imageData, 0, 0, n, n);
+  const raw = ctx.getImageData(0, 0, n, n).data;
+
+  // Greyscale pixel array
+  const pixels = new Float64Array(n * n);
+  for (let i = 0; i < n * n; i++) {
+    pixels[i] = 0.299 * raw[i*4] + 0.587 * raw[i*4+1] + 0.114 * raw[i*4+2];
+  }
+
+  // 2D DCT via matrix multiply: dct_mat @ pixels_matrix @ dct_mat.T
+  // Build DCT matrix (n×n)
+  const D = new Float64Array(n * n);
+  for (let k = 0; k < n; k++) {
+    for (let j = 0; j < n; j++) {
+      D[k * n + j] = Math.cos(Math.PI * k * (2 * j + 1) / (2 * n));
+    }
+  }
+
+  // dct2 = D * pixels * D^T  (n×n result, we only need top hashSize×hashSize)
+  const dctLow = new Float64Array(hashSize * hashSize);
+  for (let u = 0; u < hashSize; u++) {
+    for (let v = 0; v < hashSize; v++) {
+      let sum = 0;
+      for (let x = 0; x < n; x++) {
+        let rowSum = 0;
+        for (let y = 0; y < n; y++) {
+          rowSum += pixels[x * n + y] * D[v * n + y];  // D^T[y,v] = D[v,y]
+        }
+        sum += D[u * n + x] * rowSum;
+      }
+      dctLow[u * hashSize + v] = sum;
+    }
+  }
+
+  // Average excluding DC component (index 0)
+  let avg = 0;
+  for (let i = 1; i < dctLow.length; i++) avg += dctLow[i];
+  avg /= (dctLow.length - 1);
+
+  // Build 64-bit hash string
+  let bits = '';
+  for (let i = 0; i < dctLow.length; i++) bits += dctLow[i] > avg ? '1' : '0';
+
+  // Convert to hex (BigInt handles 64-bit)
+  return BigInt('0b' + bits).toString(16).padStart(hashSize * hashSize / 4, '0');
+}
+
+function hammingDistance(a, b) {
+  // XOR the two 64-bit hex hashes and count set bits
+  const ai = BigInt('0x' + a);
+  const bi = BigInt('0x' + b);
+  let x = ai ^ bi;
+  let dist = 0;
+  while (x > 0n) { dist += Number(x & 1n); x >>= 1n; }
+  return dist;
+}
+
+// ── Hash index ────────────────────────────────────────────────────────────────
+let hashIndex = [];
+
+function buildHashIndex() {
+  hashIndex = [];
+  for (const card of CARDS) {
+    if (card.phash)     hashIndex.push({ hash: card.phash,     card, isAlt: false });
+    if (card.alt_phash) hashIndex.push({ hash: card.alt_phash, card, isAlt: true  });
+  }
+}
+
 // ── Scanner ───────────────────────────────────────────────────────────────────
 let scanStream = null;
-let tesseractWorker = null;
-
-async function initTesseract() {
-  if (tesseractWorker) return;
-  try {
-    tesseractWorker = await Tesseract.createWorker('eng+jpn', 1, { logger: () => {} });
-  } catch(e) { console.warn('Tesseract init failed:', e); }
-}
 
 async function openScanner() {
   const overlay = document.getElementById('scannerOverlay');
@@ -913,7 +974,6 @@ async function openScanner() {
   document.body.style.overflow = 'hidden';
   status.className = 'scanner-status';
   status.textContent = 'Ready';
-  initTesseract(); // warm up in background
 }
 
 function closeScanner() {
@@ -923,85 +983,82 @@ function closeScanner() {
   document.getElementById('scanVideo').srcObject = null;
 }
 
-async function captureAndRead() {
+async function captureAndMatch() {
   const video  = document.getElementById('scanVideo');
   const canvas = document.getElementById('scanCanvas');
   const status = document.getElementById('scanStatus');
   const btn    = document.getElementById('captureBtn');
   if (!video.videoWidth) return;
 
+  // Draw full frame
   canvas.width  = video.videoWidth;
   canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
 
   btn.disabled = true;
   btn.textContent = '⏳';
   status.className = 'scanner-status scanning';
-  status.textContent = 'Reading…';
+  status.textContent = 'Matching card art…';
 
   try {
-    await initTesseract();
-    if (!tesseractWorker) throw new Error('OCR unavailable');
-
-    // Crop top 40% of frame (where card name + setcode live)
+    // Try matching different crop regions of the frame
+    // Cards are portrait, art fills roughly the top 55% of the card face
     const cw = canvas.width, ch = canvas.height;
-    const crop = document.createElement('canvas');
-    crop.width = cw * 0.85; crop.height = ch * 0.4;
-    crop.getContext('2d').drawImage(canvas, cw*0.075, ch*0.05, crop.width, crop.height, 0, 0, crop.width*2, crop.height*2);
-    crop.width *= 2; crop.height *= 2;
 
-    const { data: { text } } = await tesseractWorker.recognize(crop);
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
-    console.log('OCR:', lines);
+    // We try a few crop regions to handle different framings:
+    // 1. Center crop (card art filling the viewfinder)
+    // 2. Upper-center (card held a bit high)
+    const crops = [
+      { x: cw*0.1, y: ch*0.05, w: cw*0.8, h: ch*0.6  },  // center
+      { x: cw*0.1, y: 0,       w: cw*0.8, h: ch*0.55 },  // top
+      { x: cw*0.05,y: ch*0.1,  w: cw*0.9, h: ch*0.7  },  // wide center
+    ];
 
-    let bestCard = null, bestScore = 0;
+    let bestCard = null, bestDist = 999;
 
-    for (const line of lines) {
-      // Direct setcode match — most reliable
-      const setMatch = line.toUpperCase().match(/H[A-Z]{2,3}\d*-\d{3}/);
-      if (setMatch) {
-        const found = CARDS.find(c => c.setcode.toUpperCase() === setMatch[0]);
-        if (found) { bestCard = found; bestScore = 1; break; }
-      }
+    for (const crop of crops) {
+      // Draw crop to temp canvas
+      const tmp = document.createElement('canvas');
+      tmp.width = crop.w; tmp.height = crop.h;
+      tmp.getContext('2d').drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
 
-      // Name matching
-      const ll = line.toLowerCase();
-      for (const card of CARDS) {
-        const { en, jp } = parseName(card.name);
-        let score = 0;
-        const enL = en.toLowerCase();
-        if (enL === ll) { score = 1; }
-        else if (enL.includes(ll) || ll.includes(enL)) {
-          score = Math.min(enL.length, ll.length) / Math.max(enL.length, ll.length);
-        } else {
-          const enW = enL.split(/\s+/).filter(w => w.length > 2);
-          const lW  = ll.split(/\s+/).filter(w => w.length > 2);
-          const hits = enW.filter(w => lW.some(lw => lw.includes(w) || w.includes(lw)));
-          score = enW.length ? hits.length / enW.length * 0.75 : 0;
+      const frameHash = computePhash(tmp);
+
+      // Compare against hash index (includes alt art hashes too)
+      for (const entry of hashIndex) {
+        const dist = hammingDistance(frameHash, entry.hash);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestCard = entry.card;
         }
-        if (jp && line.includes(jp.substring(0,2))) score = Math.max(score, 0.7);
-        if (score > bestScore) { bestScore = score; bestCard = card; }
       }
+
+      // Good enough match — stop trying more crops
+      if (bestDist <= 10) break;
     }
 
-    if (bestCard && bestScore > 0.35) {
+    console.log(`Best match: ${bestCard?.setcode} (distance: ${bestDist})`);
+
+    // Distance thresholds:
+    // 0-10  = very confident match
+    // 11-18 = likely match
+    // 19+   = probably noise/wrong card
+    if (bestCard && bestDist <= 18) {
       const { en } = parseName(bestCard.name);
+      const confidence = bestDist <= 10 ? '✓' : '~';
       status.className = 'scanner-status found';
-      status.textContent = `✓ ${en}`;
+      status.textContent = `${confidence} ${en}`;
       setTimeout(() => { closeScanner(); openModal(bestCard); }, 700);
-    } else if (lines.length) {
-      // Fall back: put first line into search
-      closeScanner();
-      document.getElementById('searchInput').value = lines[0];
-      renderGrid();
     } else {
       status.className = 'scanner-status error';
-      status.textContent = 'No text detected — try better lighting';
+      status.textContent = 'No match — aim at the card art and try again';
     }
+
   } catch(e) {
     console.error(e);
     status.className = 'scanner-status error';
-    status.textContent = 'Read failed — try again';
+    status.textContent = 'Error — try again';
   }
 
   btn.disabled = false;
@@ -1010,7 +1067,7 @@ async function captureAndRead() {
 
 document.getElementById('openScannerBtn').addEventListener('click', openScanner);
 document.getElementById('closeScannerBtn').addEventListener('click', closeScanner);
-document.getElementById('captureBtn').addEventListener('click', captureAndRead);
+document.getElementById('captureBtn').addEventListener('click', captureAndMatch);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadCards();
