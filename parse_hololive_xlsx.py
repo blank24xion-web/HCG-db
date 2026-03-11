@@ -196,8 +196,10 @@ def main():
         print("ERROR: Pillow not installed. Run:  pip install Pillow"); sys.exit(1)
 
     os.makedirs(args.img_dir, exist_ok=True)
-    compress = not args.no_compress
-    ext      = '.jpg' if compress else '.png'
+    compress    = not args.no_compress
+    ext         = '.jpg' if compress else '.png'
+    # Always use just the folder name in stored paths, never an absolute path
+    img_dir_rel = os.path.basename(args.img_dir.rstrip('/\\')) or 'images'
 
     all_cards = []
     for f in args.files:
@@ -230,7 +232,7 @@ def main():
             p = os.path.join(args.img_dir, f"{card['setcode']}{ext}")
             try:
                 card['phash'] = save_img(main_b, p, compress)
-                card['image'] = p.replace('\\', '/'); img_count += 1
+                card['image'] = f"{img_dir_rel}/{card['setcode']}{ext}"; img_count += 1
             except Exception as e:
                 print(f"  WARNING {card['setcode']}: {e}")
 
@@ -238,7 +240,7 @@ def main():
             p = os.path.join(args.img_dir, f"{card['setcode']}_alt{ext}")
             try:
                 card['alt_phash'] = save_img(alt_b, p, compress)
-                card['alt_image'] = p.replace('\\', '/'); img_count += 1
+                card['alt_image'] = f"{img_dir_rel}/{card['setcode']}_alt{ext}"; img_count += 1
             except Exception as e:
                 print(f"  WARNING {card['setcode']} alt: {e}")
 
