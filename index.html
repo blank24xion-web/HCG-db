@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>hololive OCG · Card Database</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c28;
+    --border: #2a2a3d;
+    --accent: #c8a96e;
+    --accent2: #7b68c8;
+    --text: #e8e4f0;
+    --muted: #7a7890;
+    --white-color: #e8e0ff;
+    --blue-color: #68b4e8;
+    --green-color: #68c890;
+    --red-color: #e87868;
+    --colorless-color: #b0a8c8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Lato', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, rgba(200,169,110,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 70%, rgba(123,104,200,0.2) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 20%, rgba(200,169,110,0.2) 0%, transparent 100%),
+      radial-gradient(ellipse at 50% 0%, rgba(123,104,200,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+
+  header {
+    padding: 40px 0 30px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+
+  .logo-title {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.6rem, 4vw, 2.8rem);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    background: linear-gradient(135deg, var(--accent) 0%, #fff 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-transform: uppercase;
+  }
+
+  .logo-sub {
+    font-size: 0.7rem;
+    letter-spacing: 0.35em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .search-area {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+
+  .search-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .search-input-wrap {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-input-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  input[type="search"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px 12px 44px;
+    color: var(--text);
+    font-family: 'Lato', sans-serif;
+    font-size: 1rem;
+    font-weight: 300;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input[type="search"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(200,169,110,0.1);
+  }
+
+  input[type="search"]::placeholder { color: var(--muted); }
+
+  /* Filter sections */
+  .filter-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .filter-section:first-child { border-top: none; padding-top: 0; }
+
+  .filter-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    min-width: 50px;
+  }
+
+  .filter-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-family: 'Lato', sans-serif;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.18s;
+    letter-spacing: 0.04em;
+  }
+
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
+
+  .filter-btn.fc-White.active  { background: var(--white-color); border-color: var(--white-color); color: #111; }
+  .filter-btn.fc-Blue.active   { background: var(--blue-color);  border-color: var(--blue-color);  color: #111; }
+  .filter-btn.fc-Green.active  { background: var(--green-color); border-color: var(--green-color); color: #111; }
+  .filter-btn.fc-Red.active    { background: var(--red-color);   border-color: var(--red-color);   color: #111; }
+
+  .clear-filters-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.72rem;
+    font-family: 'Lato', sans-serif;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.18s;
+    margin-left: auto;
+  }
+  .clear-filters-btn:hover { color: var(--red-color); border-color: var(--red-color); }
+
+  /* Results bar */
+  .results-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 0.8rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+  .count { color: var(--accent); font-weight: 700; }
+
+  /* Card grid */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 18px;
+    padding-bottom: 60px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    animation: fadeIn 0.3s ease both;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 8px 32px rgba(200,169,110,0.15);
+  }
+
+  .card-image-wrap {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .card-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .no-image {
+    color: var(--muted);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .card-color-bar { height: 3px; width: 100%; }
+  .color-White    { background: var(--white-color); }
+  .color-Blue     { background: var(--blue-color); }
+  .color-Green    { background: var(--green-color); }
+  .color-Red      { background: var(--red-color); }
+  .color-None, .color-Colorless { background: var(--colorless-color); }
+
+  .card-info { padding: 10px 12px 12px; }
+
+  .card-setcode {
+    font-size: 0.62rem;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .card-name-en {
+    font-family: 'Cinzel', serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .card-name-jp {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+
+  .card-meta { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .tag {
+    font-size: 0.6rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .tag-type   { background: rgba(123,104,200,0.2); color: var(--accent2); border: 1px solid rgba(123,104,200,0.3); }
+  .tag-rarity { background: rgba(200,169,110,0.15); color: var(--accent); border: 1px solid rgba(200,169,110,0.25); }
+
+  /* Empty */
+  .empty { text-align: center; padding: 80px 20px; color: var(--muted); display: none; }
+  .empty-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+  .empty-text { font-size: 0.9rem; }
+
+  /* Scan button */
+  .scan-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 18px;
+    color: var(--muted);
+    font-family: 'Lato', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .scan-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Scanner overlay */
+  .scanner-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.95);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .scanner-overlay.open { opacity: 1; pointer-events: all; }
+
+  .scanner-window {
+    position: relative;
+    width: min(90vw, 400px);
+    aspect-ratio: 3/4;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+  }
+
+  #scanVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .scanner-window::before, .scanner-window::after,
+  .scanner-bracket-bl, .scanner-bracket-br {
+    content: '';
+    position: absolute;
+    width: 28px; height: 28px;
+    border-color: var(--accent);
+    border-style: solid;
+    z-index: 2;
+  }
+  .scanner-window::before { top: 14px; left: 14px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+  .scanner-window::after  { top: 14px; right: 14px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+  .scanner-bracket-bl { bottom: 14px; left: 14px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+  .scanner-bracket-br { bottom: 14px; right: 14px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 14px; right: 14px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    box-shadow: 0 0 8px var(--accent);
+    z-index: 3;
+    animation: scanMove 2s ease-in-out infinite;
+    top: 14px;
+  }
+  @keyframes scanMove {
+    0%   { top: 14px; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: calc(100% - 14px); opacity: 0; }
+  }
+
+  .scanner-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+
+  .scanner-status {
+    font-size: 0.85rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-align: center;
+    min-height: 1.4em;
+    transition: color 0.2s;
+  }
+  .scanner-status.found    { color: var(--green-color); }
+  .scanner-status.scanning { color: var(--accent); }
+  .scanner-status.error    { color: var(--red-color); }
+
+  .scanner-actions { display: flex; gap: 12px; align-items: center; }
+
+  .scanner-capture-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 50%;
+    width: 62px; height: 62px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 0 24px rgba(200,169,110,0.4);
+  }
+  .scanner-capture-btn:active  { transform: scale(0.92); }
+  .scanner-capture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .scanner-close-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: var(--muted);
+    font-family: 'Lato', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .scanner-close-btn:hover { color: var(--text); border-color: var(--text); }
+
+  #scanCanvas { display: none; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    max-width: 760px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(20px) scale(0.97);
+    transition: transform 0.25s;
+    position: relative;
+  }
+  .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    z-index: 10;
+  }
+  .modal-close:hover { background: var(--border); color: var(--text); }
+
+  .modal-body {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+  }
+  @media (max-width: 540px) {
+    .modal-body { grid-template-columns: 1fr; }
+  }
+
+  .modal-images {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--surface2);
+    border-radius: 16px 0 0 16px;
+  }
+  @media (max-width: 540px) {
+    .modal-images { border-radius: 16px 16px 0 0; flex-direction: row; }
+  }
+
+  .modal-img-wrap {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: var(--bg);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .modal-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+
+  .modal-img-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 2px;
+  }
+
+  .modal-details { padding: 28px 24px; }
+
+  .modal-setcode {
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .modal-name-en {
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .modal-name-jp { font-size: 1rem; color: var(--muted); margin-bottom: 16px; }
+
+  .modal-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+
+  .modal-tag {
+    font-size: 0.66rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    letter-spacing: 0.06em;
+    font-weight: 700;
+  }
+  .mt-type   { background: rgba(123,104,200,0.2); color: var(--accent2); border: 1px solid rgba(123,104,200,0.3); }
+  .mt-rarity { background: rgba(200,169,110,0.15); color: var(--accent); border: 1px solid rgba(200,169,110,0.25); }
+  .mt-White  { background: rgba(232,224,255,0.15); color: var(--white-color); border: 1px solid rgba(232,224,255,0.2); }
+  .mt-Blue   { background: rgba(104,180,232,0.15); color: var(--blue-color);  border: 1px solid rgba(104,180,232,0.2); }
+  .mt-Green  { background: rgba(104,200,144,0.15); color: var(--green-color); border: 1px solid rgba(104,200,144,0.2); }
+  .mt-Red    { background: rgba(232,120,104,0.15); color: var(--red-color);   border: 1px solid rgba(232,120,104,0.2); }
+  .mt-None, .mt-Colorless { background: rgba(176,168,200,0.15); color: var(--colorless-color); border: 1px solid rgba(176,168,200,0.2); }
+  .mt-hashtag { background: rgba(123,104,200,0.12); color: var(--accent2); border: 1px solid rgba(123,104,200,0.2); font-size: 0.63rem; }
+
+  .modal-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+
+  .modal-stat { background: var(--surface2); border-radius: 8px; padding: 10px 12px; }
+  .modal-stat-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 3px; }
+  .modal-stat-value { font-size: 0.9rem; font-weight: 700; }
+
+  .modal-divider { height: 1px; background: var(--border); margin: 0 0 14px; }
+  .modal-text-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 10px; }
+
+  .modal-card-text {
+    font-size: 0.86rem;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+    font-weight: 300;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="logo-title">hololive OCG</div>
+    <div class="logo-sub">Community Card Database · Translation Reference</div>
+  </header>
+
+  <div class="search-area">
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="search" id="searchInput" placeholder="Search by name, setcode, tag, or card text…" autocomplete="off">
+      </div>
+      <button class="scan-btn" id="openScannerBtn" title="Live camera scan">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        Scan
+      </button>
+    </div>
+    <div id="filterArea"></div>
+  </div>
+
+  <div class="results-bar">
+    <span><span class="count" id="resultCount">0</span> cards</span>
+    <span id="setLabel" style="font-size:0.72rem;letter-spacing:0.1em"></span>
+  </div>
+
+  <div class="card-grid" id="cardGrid"></div>
+  <div class="empty" id="emptyState">
+    <div class="empty-icon">🔍</div>
+    <div class="empty-text">No cards found. Try a different search.</div>
+  </div>
+</div>
+
+<!-- Scanner -->
+<div class="scanner-overlay" id="scannerOverlay">
+  <div class="scanner-window">
+    <video id="scanVideo" autoplay playsinline muted></video>
+    <div class="scan-line"></div>
+    <div class="scanner-bracket-bl"></div>
+    <div class="scanner-bracket-br"></div>
+  </div>
+  <canvas id="scanCanvas"></canvas>
+  <div class="scanner-hint">Aim at the card name or setcode (e.g. hBP01-004), then tap capture</div>
+  <div class="scanner-status" id="scanStatus">Ready</div>
+  <div class="scanner-actions">
+    <button class="scanner-capture-btn" id="captureBtn">📷</button>
+    <button class="scanner-close-btn" id="closeScannerBtn">Cancel</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ── Load card data ────────────────────────────────────────────────────────────
+let CARDS = [];
+
+async function loadCards() {
+  const res = await fetch('cards.json');
+  CARDS = await res.json();
+  buildFilters();
+  renderGrid();
+  const setCodes = [...new Set(CARDS.map(c => c.setcode.split('-')[0]))];
+  document.getElementById('setLabel').textContent = setCodes.join(' · ');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function parseName(raw) {
+  const parts = (raw || '').split('\n');
+  const jp = parts[0] || '';
+  const en = (parts[1] || '').replace(/[()]/g, '').trim();
+  return { jp, en: en || jp };
+}
+
+function getCardTags(card) {
+  if (!card.tags) return [];
+  return card.tags.split(/\s+/).filter(t => t.startsWith('#'));
+}
+
+// ── Dynamic filter builder ────────────────────────────────────────────────────
+let activeFilters = {};  // { filterKey: Set of active values }
+
+function buildFilters() {
+  const colors  = [...new Set(CARDS.map(c => c.color).filter(Boolean).filter(c => c !== 'None'))].sort();
+  const types   = [...new Set(CARDS.map(c => c.type).filter(Boolean))].sort();
+  const tags    = [...new Set(CARDS.flatMap(getCardTags))].sort();
+  const sets    = [...new Set(CARDS.map(c => c.setcode.split('-')[0]))].sort();
+  const rarities= [...new Set(CARDS.map(c => c.rarity).filter(Boolean))].sort();
+
+  const area = document.getElementById('filterArea');
+  area.innerHTML = '';
+
+  const sections = [
+    { key: 'color',  label: 'Color',   values: colors,   btnClass: c => `fc-${c}` },
+    { key: 'type',   label: 'Type',    values: types,    btnClass: () => '' },
+    { key: 'rarity', label: 'Rarity',  values: rarities, btnClass: () => '' },
+    { key: 'tag',    label: 'Tag',     values: tags,     btnClass: () => '' },
+    { key: 'set',    label: 'Set',     values: sets,     btnClass: () => '' },
+  ];
+
+  sections.forEach(({ key, label, values, btnClass }) => {
+    if (!values.length) return;
+    activeFilters[key] = new Set();
+
+    const row = document.createElement('div');
+    row.className = 'filter-section';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'filter-label';
+    lbl.textContent = label;
+    row.appendChild(lbl);
+
+    values.forEach(val => {
+      const btn = document.createElement('button');
+      btn.className = `filter-btn ${btnClass(val)}`.trim();
+      btn.textContent = val;
+      btn.dataset.filterKey = key;
+      btn.dataset.filterVal = val;
+      btn.addEventListener('click', () => toggleFilter(key, val, btn));
+      row.appendChild(btn);
+    });
+
+    // Clear button for this row
+    const clr = document.createElement('button');
+    clr.className = 'clear-filters-btn';
+    clr.textContent = 'Clear';
+    clr.addEventListener('click', () => {
+      activeFilters[key].clear();
+      row.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      renderGrid();
+    });
+    row.appendChild(clr);
+    area.appendChild(row);
+  });
+}
+
+function toggleFilter(key, val, btn) {
+  if (activeFilters[key].has(val)) {
+    activeFilters[key].delete(val);
+    btn.classList.remove('active');
+  } else {
+    activeFilters[key].add(val);
+    btn.classList.add('active');
+  }
+  renderGrid();
+}
+
+// ── Filtering ─────────────────────────────────────────────────────────────────
+function cardMatchesFilters(card) {
+  const { color, type, rarity, setcode } = card;
+  const cardSet = setcode.split('-')[0];
+  const cardTags = getCardTags(card);
+
+  if (activeFilters.color?.size  && !activeFilters.color.has(color))   return false;
+  if (activeFilters.type?.size   && !activeFilters.type.has(type))     return false;
+  if (activeFilters.rarity?.size && !activeFilters.rarity.has(rarity)) return false;
+  if (activeFilters.set?.size    && !activeFilters.set.has(cardSet))   return false;
+  if (activeFilters.tag?.size) {
+    const hasAll = [...activeFilters.tag].every(t => cardTags.includes(t));
+    if (!hasAll) return false;
+  }
+  return true;
+}
+
+function cardMatchesSearch(card, term) {
+  if (!term) return true;
+  const t = term.toLowerCase();
+  const { jp, en } = parseName(card.name);
+  return (
+    card.setcode.toLowerCase().includes(t) ||
+    en.toLowerCase().includes(t) ||
+    jp.toLowerCase().includes(t) ||
+    (card.text || '').toLowerCase().includes(t) ||
+    (card.tags || '').toLowerCase().includes(t) ||
+    (card.type || '').toLowerCase().includes(t)
+  );
+}
+
+function filteredCards() {
+  const term = document.getElementById('searchInput').value.trim();
+  return CARDS.filter(c => cardMatchesSearch(c, term) && cardMatchesFilters(c));
+}
+
+// ── Render grid ───────────────────────────────────────────────────────────────
+function renderGrid() {
+  const grid  = document.getElementById('cardGrid');
+  const empty = document.getElementById('emptyState');
+  const count = document.getElementById('resultCount');
+  const cards = filteredCards();
+
+  count.textContent = cards.length;
+  grid.innerHTML = '';
+  empty.style.display = cards.length ? 'none' : '';
+
+  cards.forEach((card, i) => {
+    const { jp, en } = parseName(card.name);
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.animationDelay = Math.min(i * 0.03, 0.4) + 's';
+    div.innerHTML = `
+      <div class="card-image-wrap">
+        ${card.image
+          ? `<img src="${card.image}" alt="${en}" loading="lazy">`
+          : `<div class="no-image">No Image</div>`}
+      </div>
+      <div class="card-color-bar color-${card.color || 'None'}"></div>
+      <div class="card-info">
+        <div class="card-setcode">${card.setcode}</div>
+        <div class="card-name-en">${en}</div>
+        <div class="card-name-jp">${jp}</div>
+        <div class="card-meta">
+          <span class="tag tag-type">${card.type}</span>
+          <span class="tag tag-rarity">${card.rarity}</span>
+        </div>
+      </div>`;
+    div.addEventListener('click', () => openModal(card));
+    grid.appendChild(div);
+  });
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(card) {
+  const { jp, en } = parseName(card.name);
+  const body = document.getElementById('modalBody');
+
+  const hashTags = getCardTags(card);
+
+  const imagesHtml = `
+    <div class="modal-images">
+      <div>
+        <div class="modal-img-wrap">
+          ${card.image
+            ? `<img src="${card.image}" alt="${en}">`
+            : `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.1em">No Image</div>`}
+        </div>
+        <div class="modal-img-label">Standard</div>
+      </div>
+      ${card.alt_image ? `
+      <div>
+        <div class="modal-img-wrap">
+          <img src="${card.alt_image}" alt="${en} alt art">
+        </div>
+        <div class="modal-img-label">Alt Art</div>
+      </div>` : ''}
+    </div>`;
+
+  const statsHtml = (card.life_hp || card.tags) ? `
+    <div class="modal-stat-row">
+      ${card.life_hp ? `<div class="modal-stat">
+        <div class="modal-stat-label">LIFE / HP</div>
+        <div class="modal-stat-value">${card.life_hp}</div>
+      </div>` : ''}
+      ${card.tags ? `<div class="modal-stat">
+        <div class="modal-stat-label">Tags</div>
+        <div class="modal-stat-value" style="font-size:0.72rem;font-weight:400;line-height:1.5">${card.tags}</div>
+      </div>` : ''}
+    </div>` : '';
+
+  body.innerHTML = `
+    ${imagesHtml}
+    <div class="modal-details">
+      <div class="modal-setcode">${card.setcode}</div>
+      <div class="modal-name-en">${en}</div>
+      <div class="modal-name-jp">${jp}</div>
+      <div class="modal-tags">
+        <span class="modal-tag mt-type">${card.type}</span>
+        <span class="modal-tag mt-rarity">${card.rarity}</span>
+        <span class="modal-tag mt-${card.color || 'None'}">${card.color || 'Colorless'}</span>
+        ${hashTags.map(t => `<span class="modal-tag mt-hashtag">${t}</span>`).join('')}
+      </div>
+      ${statsHtml}
+      <div class="modal-divider"></div>
+      <div class="modal-text-label">Card Text (EN)</div>
+      <div class="modal-card-text">${card.text || '—'}</div>
+    </div>`;
+
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', renderGrid);
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ── Scanner ───────────────────────────────────────────────────────────────────
+let scanStream = null;
+let tesseractWorker = null;
+
+async function initTesseract() {
+  if (tesseractWorker) return;
+  try {
+    tesseractWorker = await Tesseract.createWorker('eng+jpn', 1, { logger: () => {} });
+  } catch(e) { console.warn('Tesseract init failed:', e); }
+}
+
+async function openScanner() {
+  const overlay = document.getElementById('scannerOverlay');
+  const video   = document.getElementById('scanVideo');
+  const status  = document.getElementById('scanStatus');
+
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+    });
+    video.srcObject = scanStream;
+    await video.play();
+  } catch(e) {
+    status.textContent = '⚠ Camera access denied';
+    status.className = 'scanner-status error';
+    overlay.classList.add('open');
+    return;
+  }
+
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  status.className = 'scanner-status';
+  status.textContent = 'Ready';
+  initTesseract(); // warm up in background
+}
+
+function closeScanner() {
+  document.getElementById('scannerOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+  document.getElementById('scanVideo').srcObject = null;
+}
+
+async function captureAndRead() {
+  const video  = document.getElementById('scanVideo');
+  const canvas = document.getElementById('scanCanvas');
+  const status = document.getElementById('scanStatus');
+  const btn    = document.getElementById('captureBtn');
+  if (!video.videoWidth) return;
+
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  status.className = 'scanner-status scanning';
+  status.textContent = 'Reading…';
+
+  try {
+    await initTesseract();
+    if (!tesseractWorker) throw new Error('OCR unavailable');
+
+    // Crop top 40% of frame (where card name + setcode live)
+    const cw = canvas.width, ch = canvas.height;
+    const crop = document.createElement('canvas');
+    crop.width = cw * 0.85; crop.height = ch * 0.4;
+    crop.getContext('2d').drawImage(canvas, cw*0.075, ch*0.05, crop.width, crop.height, 0, 0, crop.width*2, crop.height*2);
+    crop.width *= 2; crop.height *= 2;
+
+    const { data: { text } } = await tesseractWorker.recognize(crop);
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 1);
+    console.log('OCR:', lines);
+
+    let bestCard = null, bestScore = 0;
+
+    for (const line of lines) {
+      // Direct setcode match — most reliable
+      const setMatch = line.toUpperCase().match(/H[A-Z]{2,3}\d*-\d{3}/);
+      if (setMatch) {
+        const found = CARDS.find(c => c.setcode.toUpperCase() === setMatch[0]);
+        if (found) { bestCard = found; bestScore = 1; break; }
+      }
+
+      // Name matching
+      const ll = line.toLowerCase();
+      for (const card of CARDS) {
+        const { en, jp } = parseName(card.name);
+        let score = 0;
+        const enL = en.toLowerCase();
+        if (enL === ll) { score = 1; }
+        else if (enL.includes(ll) || ll.includes(enL)) {
+          score = Math.min(enL.length, ll.length) / Math.max(enL.length, ll.length);
+        } else {
+          const enW = enL.split(/\s+/).filter(w => w.length > 2);
+          const lW  = ll.split(/\s+/).filter(w => w.length > 2);
+          const hits = enW.filter(w => lW.some(lw => lw.includes(w) || w.includes(lw)));
+          score = enW.length ? hits.length / enW.length * 0.75 : 0;
+        }
+        if (jp && line.includes(jp.substring(0,2))) score = Math.max(score, 0.7);
+        if (score > bestScore) { bestScore = score; bestCard = card; }
+      }
+    }
+
+    if (bestCard && bestScore > 0.35) {
+      const { en } = parseName(bestCard.name);
+      status.className = 'scanner-status found';
+      status.textContent = `✓ ${en}`;
+      setTimeout(() => { closeScanner(); openModal(bestCard); }, 700);
+    } else if (lines.length) {
+      // Fall back: put first line into search
+      closeScanner();
+      document.getElementById('searchInput').value = lines[0];
+      renderGrid();
+    } else {
+      status.className = 'scanner-status error';
+      status.textContent = 'No text detected — try better lighting';
+    }
+  } catch(e) {
+    console.error(e);
+    status.className = 'scanner-status error';
+    status.textContent = 'Read failed — try again';
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📷';
+}
+
+document.getElementById('openScannerBtn').addEventListener('click', openScanner);
+document.getElementById('closeScannerBtn').addEventListener('click', closeScanner);
+document.getElementById('captureBtn').addEventListener('click', captureAndRead);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadCards();
+</script>
+</body>
+</html>
