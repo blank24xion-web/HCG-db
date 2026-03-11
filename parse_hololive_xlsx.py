@@ -167,18 +167,45 @@ def parse_xlsx(path):
     return cards
 
 
+def compute_color_hist(img, bins=16):
+    """
+    Compute a normalised hue histogram for the image.
+    Skips near-grey pixels (low saturation) to focus on actual art colour.
+    Returns a list of floats summing to ~1.
+    """
+    import colorsys
+    pixels = list(img.convert('RGB').getdata())
+    hist = [0.0] * bins
+    count = 0
+    for r, g, b in pixels:
+        rf, gf, bf = r/255, g/255, b/255
+        mx = max(rf, gf, bf)
+        mn = min(rf, gf, bf)
+        s  = (mx - mn) / mx if mx > 0 else 0
+        if s < 0.15:   # skip grey/white/black
+            continue
+        h, _, _ = colorsys.rgb_to_hsv(rf, gf, bf)
+        bucket = int(h * bins) % bins
+        hist[bucket] += 1
+        count += 1
+    if count > 0:
+        hist = [v / count for v in hist]
+    return hist
+
+
 def save_img(img_bytes, out_path, compress):
     from PIL import Image
     import io
     img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-    ph  = compute_phash(img)
+    ph    = compute_phash(img)
+    chist = compute_color_hist(img)
     if compress:
         w, h = img.size
         if w > 380: img = img.resize((380, int(h*380/w)), Image.LANCZOS)
         img.save(out_path, 'JPEG', quality=82, optimize=True)
     else:
         img.save(out_path)
-    return ph
+    return ph, chist
 
 
 def main():
@@ -226,12 +253,12 @@ def main():
     for card in deduped:
         main_b = card.pop('_img',  None)
         alt_b  = card.pop('_alt',  None)
-        card.update({'image': None, 'alt_image': None, 'phash': None, 'alt_phash': None})
+        card.update({'image': None, 'alt_image': None, 'phash': None, 'alt_phash': None, 'chist': None, 'alt_chist': None})
 
         if main_b:
             p = os.path.join(args.img_dir, f"{card['setcode']}{ext}")
             try:
-                card['phash'] = save_img(main_b, p, compress)
+                card['phash'], card['chist'] = save_img(main_b, p, compress)
                 card['image'] = f"{img_dir_rel}/{card['setcode']}{ext}"; img_count += 1
             except Exception as e:
                 print(f"  WARNING {card['setcode']}: {e}")
@@ -239,7 +266,7 @@ def main():
         if alt_b:
             p = os.path.join(args.img_dir, f"{card['setcode']}_alt{ext}")
             try:
-                card['alt_phash'] = save_img(alt_b, p, compress)
+                card['alt_phash'], card['alt_chist'] = save_img(alt_b, p, compress)
                 card['alt_image'] = f"{img_dir_rel}/{card['setcode']}_alt{ext}"; img_count += 1
             except Exception as e:
                 print(f"  WARNING {card['setcode']} alt: {e}")

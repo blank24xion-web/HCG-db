@@ -295,6 +295,12 @@
   .empty-text { font-size: 0.9rem; }
 
   /* Scan button */
+  .scan-btn-wrap {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
   .scan-btn {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -311,6 +317,22 @@
     white-space: nowrap;
   }
   .scan-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .scan-beta-badge {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    background: var(--accent2);
+    color: #fff;
+    font-size: 0.48rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 2px 5px;
+    border-radius: 4px;
+    pointer-events: none;
+    line-height: 1.4;
+  }
 
   /* Scanner overlay */
   .scanner-overlay {
@@ -674,13 +696,16 @@
         </svg>
         <input type="search" id="searchInput" placeholder="Search by name, setcode, tag, or card text…" autocomplete="off">
       </div>
-      <button class="scan-btn" id="openScannerBtn" title="Live camera scan">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-          <circle cx="12" cy="13" r="4"/>
-        </svg>
-        Scan
-      </button>
+      <div class="scan-btn-wrap">
+        <button class="scan-btn" id="openScannerBtn" title="Live camera scan">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Scan
+        </button>
+        <span class="scan-beta-badge">Experimental</span>
+      </div>
     </div>
     <div id="filterArea"></div>
   </div>
@@ -1022,14 +1047,52 @@ function hammingDistance(a, b) {
   return dist;
 }
 
+// ── Color fingerprint ─────────────────────────────────────────────────────────
+// Computes a compact histogram of hue buckets from a canvas region.
+// Cards with different dominant colors will score very differently.
+function computeColorFingerprint(canvasEl, bins = 16) {
+  const ctx = canvasEl.getContext('2d');
+  const w = canvasEl.width, h = canvasEl.height;
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const hist = new Float32Array(bins);
+  let count = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i] / 255, g = data[i+1] / 255, b = data[i+2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const s = max === 0 ? 0 : (max - min) / max;
+    // Skip near-grey pixels (low saturation) — they're background/text
+    if (s < 0.15) continue;
+    let h_;
+    if (max === r)      h_ = (g - b) / (max - min);
+    else if (max === g) h_ = 2 + (b - r) / (max - min);
+    else                h_ = 4 + (r - g) / (max - min);
+    h_ = ((h_ * 60) + 360) % 360;
+    hist[Math.floor(h_ / 360 * bins) % bins]++;
+    count++;
+  }
+  if (count > 0) for (let i = 0; i < bins; i++) hist[i] /= count;
+  return hist;
+}
+
+function colorDistance(a, b) {
+  // Chi-squared distance between two histograms (lower = more similar)
+  let dist = 0;
+  for (let i = 0; i < a.length; i++) {
+    const sum = a[i] + b[i];
+    if (sum > 0) dist += (a[i] - b[i]) ** 2 / sum;
+  }
+  return dist;
+}
+
 // ── Hash index ────────────────────────────────────────────────────────────────
 let hashIndex = [];
 
 function buildHashIndex() {
   hashIndex = [];
   for (const card of CARDS) {
-    if (card.phash)     hashIndex.push({ hash: card.phash,     card, isAlt: false });
-    if (card.alt_phash) hashIndex.push({ hash: card.alt_phash, card, isAlt: true  });
+    if (card.phash)     hashIndex.push({ hash: card.phash,     colorHist: card.chist     || null, card, isAlt: false });
+    if (card.alt_phash) hashIndex.push({ hash: card.alt_phash, colorHist: card.alt_chist || null, card, isAlt: true  });
   }
 }
 
@@ -1087,39 +1150,45 @@ async function captureAndMatch() {
   try {
     const cw = canvas.width, ch = canvas.height;
 
-    // Try multiple crop regions, keep best distance per card
     const crops = [
       { x: cw*0.1,  y: ch*0.05, w: cw*0.8, h: ch*0.6  },
       { x: cw*0.1,  y: 0,       w: cw*0.8, h: ch*0.55 },
       { x: cw*0.05, y: ch*0.1,  w: cw*0.9, h: ch*0.7  },
     ];
 
-    // Track best distance per setcode across all crops
     const bestPerCard = {};
 
     for (const crop of crops) {
       const tmp = document.createElement('canvas');
-      tmp.width = crop.w; tmp.height = crop.h;
-      tmp.getContext('2d').drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
-      const frameHash = computePhash(tmp);
+      tmp.width  = Math.floor(crop.w);
+      tmp.height = Math.floor(crop.h);
+      tmp.getContext('2d').drawImage(canvas, crop.x, crop.y, crop.w, crop.h, 0, 0, tmp.width, tmp.height);
+
+      const frameHash  = computePhash(tmp);
+      const frameColor = computeColorFingerprint(tmp);
 
       for (const entry of hashIndex) {
-        const dist = hammingDistance(frameHash, entry.hash);
-        const key  = entry.card.setcode;
-        if (!(key in bestPerCard) || dist < bestPerCard[key].dist) {
-          bestPerCard[key] = { dist, card: entry.card };
+        // Normalised phash distance (0-1)
+        const hashDist  = hammingDistance(frameHash, entry.hash) / 64;
+        // Color histogram distance — heavily weighted since colour is very distinctive
+        const colorDist = entry.colorHist
+          ? colorDistance(frameColor, entry.colorHist) * 3
+          : 0.5;
+        // Combined score: lower = better match
+        const score = hashDist * 0.4 + colorDist * 0.6;
+        const key = entry.card.setcode;
+        if (!(key in bestPerCard) || score < bestPerCard[key].score) {
+          bestPerCard[key] = { score, card: entry.card };
         }
       }
     }
 
-    // Sort all cards by best distance, take top 5
     const ranked = Object.values(bestPerCard)
-      .sort((a, b) => a.dist - b.dist)
+      .sort((a, b) => a.score - b.score)
       .slice(0, 5);
 
-    console.log('Top matches:', ranked.map(r => `${r.card.setcode}(${r.dist})`));
+    console.log('Top matches:', ranked.map(r => `${r.card.setcode}(${r.score.toFixed(2)})`));
 
-    // Show shortlist
     showShortlist(ranked);
     status.className = 'scanner-status found';
     status.textContent = 'Pick the card you scanned:';
@@ -1154,13 +1223,13 @@ function showShortlist(ranked) {
   list.appendChild(lbl);
 
   // Card options
-  ranked.forEach(({ card, dist }) => {
+  ranked.forEach(({ card, score }, i) => {
     const { en, jp } = parseName(card.name);
     const row = document.createElement('div');
     row.className = 'shortlist-card';
 
-    // Confidence label: lower distance = better match
-    const confidence = dist <= 10 ? 'Best match' : dist <= 18 ? 'Likely' : 'Possible';
+    // Confidence label based on combined score (lower = better)
+    const confidence = i === 0 ? 'Best match' : score < 0.35 ? 'Likely' : 'Possible';
 
     row.innerHTML = `
       ${card.image
