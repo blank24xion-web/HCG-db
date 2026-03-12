@@ -235,15 +235,14 @@
     .viewer-grid { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
   }
 
-  /* Paste modal */
-  .paste-modal { width: min(420px, 100%); }
-  .paste-modal-header { padding: 14px 16px 0; font-family: 'Cinzel', serif; font-size: 0.85rem; font-weight: 600; color: var(--accent); }
-  .paste-modal-hint { padding: 6px 16px 10px; font-size: 0.7rem; color: var(--muted); line-height: 1.5; }
-  .paste-modal-hint code { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 0.68rem; color: var(--text); }
-  #pasteTextarea { width: 100%; height: 180px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 10px; color: var(--text); font-family: 'Lato', monospace; font-size: 0.75rem; outline: none; resize: vertical; transition: border-color 0.15s; }
-  #pasteTextarea:focus { border-color: var(--accent); }
-  #pasteTextarea::placeholder { color: var(--muted); }
-  .paste-modal-actions { display: flex; gap: 7px; padding: 10px 16px 14px; }
+  /* Save format modal */
+  .save-modal { width: min(280px, 100%); }
+  .save-modal-header { padding: 16px 16px 6px; font-family: 'Cinzel', serif; font-size: 0.85rem; font-weight: 600; color: var(--accent); }
+  .save-modal-hint { padding: 0 16px 12px; font-size: 0.7rem; color: var(--muted); line-height: 1.5; }
+  .save-modal-actions { display: flex; flex-direction: column; gap: 7px; padding: 0 16px 16px; }
+  .save-format-btn { width: 100%; justify-content: space-between; }
+  .save-format-btn span { font-size: 0.65rem; font-weight: 400; color: var(--muted); }
+  .save-format-btn.active span { color: inherit; opacity: 0.7; }
 </style>
 </head>
 <body>
@@ -280,8 +279,7 @@
   <div class="header-right">
     <input id="deckNameInput" type="text" placeholder="Untitled Deck" maxlength="48">
     <button class="btn btn-ghost" id="newDeckBtn">＋ New</button>
-    <label class="btn btn-ghost" style="cursor:pointer">↑ Load<input type="file" id="loadFile" accept=".txt,.hocg,text/plain" style="display:none"></label>
-    <button class="btn btn-ghost" id="pasteLoadBtn">📋 Paste</button>
+    <label class="btn btn-ghost" style="cursor:pointer">↑ Load<input type="file" id="loadFile" accept=".txt,.hocg" style="display:none"></label>
     <button class="btn btn-ghost" id="saveBtn">↓ Save</button>
     <button class="btn btn-danger" id="clearBtn">✕ Clear</button>
   </div>
@@ -346,19 +344,18 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="pasteOverlay">
-  <div class="modal paste-modal">
-    <div class="paste-modal-header">Load Deck from Text</div>
-    <div class="paste-modal-hint">
-      On iPhone: open your <code>.hocg</code> file in the Files app, tap ···  → Copy. Then paste below.<br>
-      Or paste any <code>setcode:quantity</code> deck list.
-    </div>
-    <div style="padding: 0 16px">
-      <textarea id="pasteTextarea" placeholder="#name:My Deck&#10;hSD01-001:1&#10;hSD01-002:4&#10;..."></textarea>
-    </div>
-    <div class="paste-modal-actions">
-      <button class="btn btn-primary" id="pasteConfirmBtn" style="flex:1">Load Deck</button>
-      <button class="btn btn-ghost" id="pasteCancelBtn">Cancel</button>
+<div class="modal-overlay" id="saveOverlay">
+  <div class="modal save-modal">
+    <div class="save-modal-header">Save Deck As…</div>
+    <div class="save-modal-hint">Choose a format. Both contain the same data.</div>
+    <div class="save-modal-actions">
+      <button class="btn btn-primary save-format-btn" id="saveHocgBtn">
+        .hocg <span>Standard format · desktop</span>
+      </button>
+      <button class="btn btn-ghost save-format-btn" id="saveTxtBtn">
+        .txt <span>Plain text · works on iPhone</span>
+      </button>
+      <button class="btn btn-ghost" id="saveCancelBtn">Cancel</button>
     </div>
   </div>
 </div>
@@ -704,7 +701,7 @@ function renderViewer() {
 }
 
 // ── Save / Load ───────────────────────────────────────────────────────────────
-function saveDeck() {
+function saveDeck(ext='hocg') {
   const name=document.getElementById('deckNameInput').value||'Untitled Deck';
   const lines=[`#name:${name}`,'#format:hOCG-1.0','#'];
   [...Object.entries(deck.oshi),...Object.entries(deck.main),...Object.entries(deck.cheer)]
@@ -712,9 +709,9 @@ function saveDeck() {
   const blob=new Blob([lines.join('\n')],{type:'text/plain'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`${name.replace(/[^\w\- ]/g,'_')}.hocg`;
+  a.download=`${name.replace(/[^\w\- ]/g,'_')}.${ext}`;
   a.click();URL.revokeObjectURL(a.href);
-  toast('Deck saved ✓');
+  toast(`Deck saved as .${ext} ✓`);
 }
 
 function loadDeckText(text) {
@@ -738,7 +735,23 @@ function loadDeckText(text) {
 // ── Events ────────────────────────────────────────────────────────────────────
 document.getElementById('browserSearch').addEventListener('input',renderBrowser);
 document.getElementById('deckNameInput').addEventListener('input',e=>{ deck.name=e.target.value; if(currentMode==='view') document.getElementById('viewerDeckName').textContent=e.target.value; });
-document.getElementById('saveBtn').addEventListener('click',saveDeck);
+document.getElementById('saveBtn').addEventListener('click',()=>{
+  document.getElementById('saveOverlay').classList.add('open');
+});
+document.getElementById('saveHocgBtn').addEventListener('click',()=>{
+  document.getElementById('saveOverlay').classList.remove('open');
+  saveDeck('hocg');
+});
+document.getElementById('saveTxtBtn').addEventListener('click',()=>{
+  document.getElementById('saveOverlay').classList.remove('open');
+  saveDeck('txt');
+});
+document.getElementById('saveCancelBtn').addEventListener('click',()=>{
+  document.getElementById('saveOverlay').classList.remove('open');
+});
+document.getElementById('saveOverlay').addEventListener('click',e=>{
+  if(e.target===e.currentTarget) document.getElementById('saveOverlay').classList.remove('open');
+});
 document.getElementById('clearBtn').addEventListener('click',()=>{
   if(!confirm('Clear current deck?'))return;
   deck={oshi:{},main:{},cheer:{}};renderDeck();renderBrowser();if(currentMode==='view')renderViewer();
@@ -748,25 +761,6 @@ document.getElementById('newDeckBtn').addEventListener('click',()=>{
   deck={oshi:{},main:{},cheer:{}};document.getElementById('deckNameInput').value='';
   renderDeck();renderBrowser();if(currentMode==='view')renderViewer();
 });
-// ── Paste Load (iOS fallback) ─────────────────────────────────────────────────
-document.getElementById('pasteLoadBtn').addEventListener('click', () => {
-  document.getElementById('pasteTextarea').value = '';
-  document.getElementById('pasteOverlay').classList.add('open');
-  setTimeout(() => document.getElementById('pasteTextarea').focus(), 80);
-});
-document.getElementById('pasteConfirmBtn').addEventListener('click', () => {
-  const text = document.getElementById('pasteTextarea').value.trim();
-  if (!text) { toast('Nothing to load'); return; }
-  document.getElementById('pasteOverlay').classList.remove('open');
-  loadDeckText(text);
-});
-document.getElementById('pasteCancelBtn').addEventListener('click', () => {
-  document.getElementById('pasteOverlay').classList.remove('open');
-});
-document.getElementById('pasteOverlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) document.getElementById('pasteOverlay').classList.remove('open');
-});
-
 document.getElementById('loadFile').addEventListener('change',e=>{
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();r.onload=ev=>loadDeckText(ev.target.result);r.readAsText(f);
