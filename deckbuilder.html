@@ -68,19 +68,16 @@
   .filter-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 9px; font-size: 0.7rem; color: var(--muted); cursor: pointer; transition: all 0.12s; }
   .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
   .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
-  .browser-grid { flex: 1; overflow-y: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; align-content: start; }
-  .browser-card { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; background: var(--surface); }
-  .browser-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 28px rgba(200,169,110,0.15); }
-  .browser-card.in-deck { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2); }
+  .browser-grid { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 7px; align-content: start; }
+  .browser-card { position: relative; cursor: pointer; border-radius: 7px; overflow: hidden; border: 2px solid transparent; transition: border-color 0.15s, transform 0.12s; background: var(--surface); aspect-ratio: 0.72; }
+  .browser-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .browser-card.in-deck { border-color: var(--accent2); }
   .browser-card.maxed { opacity: 0.4; cursor: not-allowed; }
-  .browser-card.maxed:hover { transform: none; border-color: var(--border); box-shadow: none; }
-  .browser-card-img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; background: var(--surface2); }
-  .browser-card-placeholder { width: 100%; aspect-ratio: 2/3; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--muted); text-align: center; padding: 8px; background: var(--surface2); }
-  .in-deck-badge { position: absolute; top: 5px; right: 5px; background: var(--accent2); color: #fff; font-size: 0.65rem; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
-  .browser-card-info { padding: 8px 10px 10px; }
-  .browser-card-setcode { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
-  .browser-card-name { font-family: 'Cinzel', serif; font-size: 0.74rem; font-weight: 600; line-height: 1.3; color: var(--text); margin-bottom: 1px; }
-  .browser-card-jp { font-size: 0.68rem; color: var(--muted); }
+  .browser-card.maxed:hover { transform: none; border-color: transparent; }
+  .browser-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .browser-card-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.58rem; color: var(--muted); text-align: center; padding: 4px; }
+  .in-deck-badge { position: absolute; top: 3px; right: 3px; background: var(--accent2); color: #fff; font-size: 0.62rem; font-weight: 700; width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .browser-card-name { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.88)); padding: 10px 3px 3px; font-size: 0.55rem; text-align: center; color: #fff; }
   .browser-count { padding: 5px 14px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--border); }
 
   /* Deck panel */
@@ -307,7 +304,7 @@
     .deck-fab { display: inline-flex; }
 
     /* Browser grid: slightly larger touch targets */
-    .browser-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .browser-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
     .filter-chip { padding: 4px 10px; font-size: 0.72rem; }
 
     /* Viewer */
@@ -622,19 +619,14 @@ function renderBrowser() {
   });
   grid.innerHTML='';
   filtered.forEach(card=>{
-    const {en,jp}=parseName(card.name);
+    const {en}=parseName(card.name);
     const qty=countInDeck(card), max=maxCopies(card), maxed=isFinite(max)&&qty>=max;
     const el=document.createElement('div');
     el.className=`browser-card${qty>0?' in-deck':''}${maxed?' maxed':''}`;
     el.title=`${en} (${card.setcode})`;
-    el.innerHTML=`
-      ${card.image?`<img class="browser-card-img" src="${card.image}" alt="${en}" loading="lazy">`:`<div class="browser-card-placeholder">${en}</div>`}
-      ${qty>0?`<div class="in-deck-badge">${qty}</div>`:''}
-      <div class="browser-card-info">
-        <div class="browser-card-setcode">${card.setcode}</div>
-        <div class="browser-card-name">${en}</div>
-        ${jp?`<div class="browser-card-jp">${jp}</div>`:''}
-      </div>`;
+    el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="browser-card-placeholder">${en}</div>`;
+    if(qty>0) el.innerHTML+=`<div class="in-deck-badge">${qty}</div>`;
+    el.innerHTML+=`<div class="browser-card-name">${en}</div>`;
     el.addEventListener('click',()=>{ if(maxed){toast(`Max ${max} copies`);return;} openPreview(card,'edit'); });
     grid.appendChild(el);
   });
