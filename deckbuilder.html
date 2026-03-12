@@ -657,18 +657,13 @@ function renderViewer() {
     [...entries].sort((a,b)=>parseName(a.card.name).en.localeCompare(parseName(b.card.name).en))
       .forEach(({card,qty})=>{
         const {en}=parseName(card.name);
-        // Show one tile per copy (up to 4), or one tile with badge if >4
-        const tiles = qty <= 4 ? qty : 1;
-        const showBadge = qty > 4;
-        for(let i=0;i<tiles;i++){
-          const el=document.createElement('div');
-          el.className='viewer-card';
-          el.title=`${en} — ${card.setcode}`;
-          el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="viewer-card-placeholder">${en}</div>`;
-          if(showBadge||qty>1) el.innerHTML+=`<div class="viewer-qty-badge">×${qty}</div>`;
-          el.addEventListener('click',()=>openPreview(card,'view'));
-          grid.appendChild(el);
-        }
+        const el=document.createElement('div');
+        el.className='viewer-card';
+        el.title=`${en} — ${card.setcode}`;
+        el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="viewer-card-placeholder">${en}</div>`;
+        if(qty>1) el.innerHTML+=`<div class="viewer-qty-badge">×${qty}</div>`;
+        el.addEventListener('click',()=>openPreview(card,'view'));
+        grid.appendChild(el);
       });
 
     bodyEl.appendChild(wrap);
