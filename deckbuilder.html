@@ -68,16 +68,32 @@
   .filter-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 9px; font-size: 0.7rem; color: var(--muted); cursor: pointer; transition: all 0.12s; }
   .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
   .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
-  .browser-grid { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 7px; align-content: start; }
-  .browser-card { position: relative; cursor: pointer; border-radius: 7px; overflow: hidden; border: 2px solid transparent; transition: border-color 0.15s, transform 0.12s; background: var(--surface); aspect-ratio: 0.72; }
-  .browser-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .browser-card.in-deck { border-color: var(--accent2); }
+  .browser-grid { flex: 1; overflow-y: auto; padding: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; align-content: start; }
+  .browser-card { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; background: var(--surface); display: flex; flex-direction: column; }
+  .browser-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 6px 20px rgba(200,169,110,0.12); }
+  .browser-card.in-deck { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2); }
   .browser-card.maxed { opacity: 0.4; cursor: not-allowed; }
-  .browser-card.maxed:hover { transform: none; border-color: transparent; }
-  .browser-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .browser-card-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.58rem; color: var(--muted); text-align: center; padding: 4px; }
-  .in-deck-badge { position: absolute; top: 3px; right: 3px; background: var(--accent2); color: #fff; font-size: 0.62rem; font-weight: 700; width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-  .browser-card-name { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.88)); padding: 10px 3px 3px; font-size: 0.55rem; text-align: center; color: #fff; }
+  .browser-card.maxed:hover { transform: none; border-color: var(--border); box-shadow: none; }
+  .browser-card-img-wrap { width: 100%; aspect-ratio: 2/3; background: var(--surface2); overflow: hidden; position: relative; flex-shrink: 0; }
+  .browser-card-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .browser-card-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--muted); text-align: center; padding: 8px; }
+  .in-deck-badge { position: absolute; top: 5px; right: 5px; background: var(--accent2); color: #fff; font-size: 0.65rem; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; }
+  .browser-card-color-bar { height: 3px; width: 100%; flex-shrink: 0; }
+  .color-White     { background: var(--white-color); }
+  .color-Blue      { background: var(--blue-color); }
+  .color-Green     { background: var(--green-color); }
+  .color-Red       { background: var(--red-color); }
+  .color-None, .color-Colorless { background: var(--colorless-color); }
+  .browser-card-info { padding: 7px 9px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .browser-card-setcode { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
+  .browser-card-name { font-family: 'Cinzel', serif; font-size: 0.72rem; font-weight: 600; line-height: 1.3; color: var(--text); }
+  .browser-card-jp { font-size: 0.68rem; color: var(--muted); }
+  .browser-card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+  .bc-tag { font-size: 0.57rem; padding: 1px 6px; border-radius: 8px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); }
+  .bc-tag-type { border-color: var(--accent2); color: var(--accent2); }
+  .browser-card-add { width: 100%; padding: 6px; background: var(--surface2); border: none; border-top: 1px solid var(--border); color: var(--accent); font-family: 'Lato', sans-serif; font-size: 0.72rem; font-weight: 700; cursor: pointer; transition: background 0.12s, color 0.12s; flex-shrink: 0; letter-spacing: 0.04em; }
+  .browser-card-add:hover { background: var(--accent); color: #111; }
+  .browser-card.maxed .browser-card-add { color: var(--muted); pointer-events: none; }
   .browser-count { padding: 5px 14px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--border); }
 
   /* Deck panel */
@@ -304,7 +320,7 @@
     .deck-fab { display: inline-flex; }
 
     /* Browser grid: slightly larger touch targets */
-    .browser-grid { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+    .browser-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
     .filter-chip { padding: 4px 10px; font-size: 0.72rem; }
 
     /* Viewer */
@@ -619,15 +635,32 @@ function renderBrowser() {
   });
   grid.innerHTML='';
   filtered.forEach(card=>{
-    const {en}=parseName(card.name);
+    const {en,jp}=parseName(card.name);
     const qty=countInDeck(card), max=maxCopies(card), maxed=isFinite(max)&&qty>=max;
     const el=document.createElement('div');
     el.className=`browser-card${qty>0?' in-deck':''}${maxed?' maxed':''}`;
-    el.title=`${en} (${card.setcode})`;
-    el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="browser-card-placeholder">${en}</div>`;
-    if(qty>0) el.innerHTML+=`<div class="in-deck-badge">${qty}</div>`;
-    el.innerHTML+=`<div class="browser-card-name">${en}</div>`;
-    el.addEventListener('click',()=>{ if(maxed){toast(`Max ${max} copies`);return;} openPreview(card,'edit'); });
+    el.innerHTML=`
+      <div class="browser-card-img-wrap">
+        ${card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="browser-card-placeholder">${en}</div>`}
+        ${qty>0?`<div class="in-deck-badge">${qty}</div>`:''}
+      </div>
+      <div class="browser-card-color-bar color-${card.color||'None'}"></div>
+      <div class="browser-card-info">
+        <div class="browser-card-setcode">${card.setcode}</div>
+        <div class="browser-card-name">${en}</div>
+        ${jp?`<div class="browser-card-jp">${jp}</div>`:''}
+        <div class="browser-card-tags">
+          ${card.type?`<span class="bc-tag bc-tag-type">${card.type}</span>`:''}
+          ${card.rarity?`<span class="bc-tag">${card.rarity}</span>`:''}
+        </div>
+      </div>
+      <button class="browser-card-add" data-maxed="${maxed}">${maxed?'Max copies':'＋ Add to Deck'}</button>`;
+    el.querySelector('.browser-card-img-wrap').addEventListener('click', ()=>openPreview(card,'edit'));
+    el.querySelector('.browser-card-add').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(maxed){toast(`Max ${max} copies`);return;}
+      addCard(card);
+    });
     grid.appendChild(el);
   });
   countEl.textContent=`${filtered.length} cards`;
@@ -820,18 +853,13 @@ function renderViewer() {
     [...entries].sort((a,b)=>parseName(a.card.name).en.localeCompare(parseName(b.card.name).en))
       .forEach(({card,qty})=>{
         const {en}=parseName(card.name);
-        // Show one tile per copy (up to 4), or one tile with badge if >4
-        const tiles = qty <= 4 ? qty : 1;
-        const showBadge = qty > 4;
-        for(let i=0;i<tiles;i++){
-          const el=document.createElement('div');
-          el.className='viewer-card';
-          el.title=`${en} — ${card.setcode}`;
-          el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="viewer-card-placeholder">${en}</div>`;
-          if(showBadge||qty>1) el.innerHTML+=`<div class="viewer-qty-badge">×${qty}</div>`;
-          el.addEventListener('click',()=>openPreview(card,'view'));
-          grid.appendChild(el);
-        }
+        const el=document.createElement('div');
+        el.className='viewer-card';
+        el.title=`${en} — ${card.setcode}`;
+        el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="viewer-card-placeholder">${en}</div>`;
+        if(qty>1) el.innerHTML+=`<div class="viewer-qty-badge">×${qty}</div>`;
+        el.addEventListener('click',()=>openPreview(card,'view'));
+        grid.appendChild(el);
       });
 
     bodyEl.appendChild(wrap);
