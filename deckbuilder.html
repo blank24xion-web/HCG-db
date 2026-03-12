@@ -68,32 +68,20 @@
   .filter-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 9px; font-size: 0.7rem; color: var(--muted); cursor: pointer; transition: all 0.12s; }
   .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
   .filter-chip.active { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
-  /* Browser grid - database style */
   .browser-grid { flex: 1; overflow-y: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; align-content: start; }
-  @keyframes bcFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-  .browser-card { position: relative; cursor: pointer; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; background: var(--surface); animation: bcFadeIn 0.3s ease both; }
-  .browser-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 8px 32px rgba(200,169,110,0.15); }
+  .browser-card { position: relative; cursor: pointer; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s; background: var(--surface); }
+  .browser-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 8px 28px rgba(200,169,110,0.15); }
   .browser-card.in-deck { border-color: var(--accent2); box-shadow: 0 0 0 1px var(--accent2); }
   .browser-card.maxed { opacity: 0.4; cursor: not-allowed; }
   .browser-card.maxed:hover { transform: none; border-color: var(--border); box-shadow: none; }
   .bc-image-wrap { width: 100%; aspect-ratio: 2/3; background: var(--surface2); display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .bc-image-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .bc-no-image { color: var(--muted); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; }
-  .bc-color-bar { height: 3px; width: 100%; }
-  .color-White { background: var(--white-color); }
-  .color-Blue { background: var(--blue-color); }
-  .color-Green { background: var(--green-color); }
-  .color-Red { background: var(--red-color); }
-  .color-None, .color-Colorless { background: var(--colorless-color); }
-  .bc-info { padding: 8px 10px 10px; }
-  .bc-setcode { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
-  .bc-name-en { font-family: 'Cinzel', serif; font-size: 0.76rem; font-weight: 600; line-height: 1.3; color: var(--text); margin-bottom: 2px; }
-  .bc-name-jp { font-size: 0.72rem; color: var(--muted); margin-bottom: 6px; }
-  .bc-meta { display: flex; gap: 5px; flex-wrap: wrap; }
-  .bc-tag { font-size: 0.58rem; padding: 2px 7px; border-radius: 10px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
-  .bc-tag-type   { background: rgba(123,104,200,0.2); color: var(--accent2); border: 1px solid rgba(123,104,200,0.3); }
-  .bc-tag-rarity { background: rgba(200,169,110,0.15); color: var(--accent); border: 1px solid rgba(200,169,110,0.25); }
-  .in-deck-badge { position: absolute; top: 6px; right: 6px; background: var(--accent2); color: #fff; font-size: 0.65rem; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+  .in-deck-badge { position: absolute; top: 5px; right: 5px; background: var(--accent2); color: #fff; font-size: 0.65rem; font-weight: 700; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+  .browser-card-info { padding: 8px 10px 10px; }
+  .browser-card-setcode { font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px; }
+  .browser-card-name { font-family: 'Cinzel', serif; font-size: 0.74rem; font-weight: 600; line-height: 1.3; color: var(--text); margin-bottom: 1px; }
+  .browser-card-jp { font-size: 0.68rem; color: var(--muted); }
   .browser-count { padding: 5px 14px; font-size: 0.7rem; color: var(--muted); border-top: 1px solid var(--border); }
 
   /* Deck panel */
@@ -634,25 +622,20 @@ function renderBrowser() {
     return true;
   });
   grid.innerHTML='';
-  filtered.forEach((card,i)=>{
+  filtered.forEach(card=>{
     const {en,jp}=parseName(card.name);
     const qty=countInDeck(card), max=maxCopies(card), maxed=isFinite(max)&&qty>=max;
     const el=document.createElement('div');
     el.className=`browser-card${qty>0?' in-deck':''}${maxed?' maxed':''}`;
-    el.style.animationDelay = Math.min(i*0.02, 0.4)+'s';
+    el.title=`${en} (${card.setcode})`;
     el.innerHTML=`
       <div class="bc-image-wrap">
         ${card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="bc-no-image">No Image</div>`}
       </div>
-      <div class="bc-color-bar color-${card.color||'None'}"></div>
-      <div class="bc-info">
-        <div class="bc-setcode">${card.setcode}</div>
-        <div class="bc-name-en">${en}</div>
-        ${jp?`<div class="bc-name-jp">${jp}</div>`:''}
-        <div class="bc-meta">
-          ${card.type?`<span class="bc-tag bc-tag-type">${card.type}</span>`:''}
-          ${card.rarity?`<span class="bc-tag bc-tag-rarity">${card.rarity}</span>`:''}
-        </div>
+      <div class="browser-card-info">
+        <div class="browser-card-setcode">${card.setcode}</div>
+        <div class="browser-card-name">${en}</div>
+        ${jp?`<div class="browser-card-jp">${jp}</div>`:''}
       </div>
       ${qty>0?`<div class="in-deck-badge">${qty}</div>`:''}`;
     el.addEventListener('click',()=>{ if(maxed){toast(`Max ${max} copies`);return;} openPreview(card,'edit'); });
@@ -849,17 +832,13 @@ function renderViewer() {
       .forEach(({card,qty})=>{
         const {en}=parseName(card.name);
         // Show one tile per copy (up to 4), or one tile with badge if >4
-        const tiles = qty <= 4 ? qty : 1;
-        const showBadge = qty > 4;
-        for(let i=0;i<tiles;i++){
-          const el=document.createElement('div');
-          el.className='viewer-card';
-          el.title=`${en} — ${card.setcode}`;
-          el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="viewer-card-placeholder">${en}</div>`;
-          if(showBadge||qty>1) el.innerHTML+=`<div class="viewer-qty-badge">×${qty}</div>`;
-          el.addEventListener('click',()=>openPreview(card,'view'));
-          grid.appendChild(el);
-        }
+        const el=document.createElement('div');
+        el.className='viewer-card';
+        el.title=`${en} — ${card.setcode}`;
+        el.innerHTML=card.image?`<img src="${card.image}" alt="${en}" loading="lazy">`:`<div class="viewer-card-placeholder">${en}</div>`;
+        if(qty>1) el.innerHTML+=`<div class="viewer-qty-badge">×${qty}</div>`;
+        el.addEventListener('click',()=>openPreview(card,'view'));
+        grid.appendChild(el);
       });
 
     bodyEl.appendChild(wrap);
