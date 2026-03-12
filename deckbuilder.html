@@ -407,49 +407,84 @@ body {
 .deck-drawer .deck-sections { flex: 1; overflow-y: auto; padding: 8px; -webkit-overflow-scrolling: touch; }
 .deck-drawer .deck-validation { padding: 8px 12px; }
 
-/* Desktop: row1 is the whole header, row2 is hidden */
+/* Desktop: single row header */
 .header-row1 { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 16px; height: var(--header-h); gap: 10px; }
-.mobile-actions { display: none; }
-.mobile-mode { display: none; }
+.header-row2 { display: none; }
+.header-row3 { display: none; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
   :root { --panel-w: 0px; }
 
-  /* Row 1 mobile: just the logo */
-  .header-row1 {
-    padding: 10px 12px;
-    justify-content: flex-start;
+  /* Header expands into 3 rows */
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    padding: 0;
+    gap: 0;
   }
-  /* Hide mode switcher from row 1 on mobile — it moves to row 2 */
-  .header-center { display: none; }
 
+  /* Row 1: logo + nav links */
+  .header-row1 {
+    height: auto;
+    padding: 10px 14px;
+    justify-content: flex-start;
+    gap: 10px;
+    border-bottom: none;
+  }
+  /* Hide desktop deck name + action buttons */
+  .header-row1 .header-right { display: none; }
+  /* Hide desktop mode switcher */
+  .header-row1 .header-center { display: none; }
+
+  /* Row 2: Edit / View mode switcher — full width, generous */
   .header-row2 {
     display: flex;
+    padding: 0 14px 10px;
+  }
+  .header-row2 .mode-switcher {
+    flex: 1;
+  }
+  .header-row2 .btn-mode {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 0;
+    font-size: 0.82rem;
+  }
+
+  /* Row 3: deck name + action buttons, scrollable */
+  .header-row3 {
+    display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px 8px;
+    gap: 7px;
+    padding: 8px 14px 10px;
     border-top: 1px solid var(--border);
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
-  .header-row2::-webkit-scrollbar { display: none; }
+  .header-row3::-webkit-scrollbar { display: none; }
+  .header-row3 #deckNameInputMobile {
+    flex-shrink: 0;
+    width: 130px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Cinzel', serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 2px;
+    outline: none;
+  }
+  .header-row3 #deckNameInputMobile:focus { border-color: var(--accent); }
+  .header-row3 #deckNameInputMobile::placeholder { color: var(--muted); font-weight: 400; font-family: 'Lato', sans-serif; }
+  .header-row3 .btn { flex-shrink: 0; padding: 6px 12px; font-size: 0.75rem; }
 
-  /* Mode switcher shown inline in row 2 */
-  .mobile-mode { display: flex; flex-shrink: 0; }
-
-  /* Nav links hidden on mobile */
-  .header-left nav { display: none; }
-  .site-title { font-size: 0.9rem; }
-  .desktop-actions { display: none; }
-  .mobile-actions  { display: contents; } /* items flow directly into row 2 flex */
-
-  /* Give mode buttons full labels */
-  .btn-mode { padding: 6px 14px; font-size: 0.78rem; flex-shrink: 0; }
-
-  /* Deck name */
-  #deckNameInputMobile { flex-shrink: 0; width: 120px; font-size: 0.82rem; }
+  /* Nav links — keep them, they fit in row 1 */
+  .site-title { font-size: 0.88rem; }
+  .nav-btn { font-size: 0.72rem; padding: 5px 9px; }
 
   #pageEdit .deck-panel { display: none; }
   #pageEdit .browser { right: 0; border-right: none; }
@@ -467,7 +502,8 @@ body {
 
 <!-- ── Header ── -->
 <header class="header">
-  <!-- Row 1 (desktop: full single row; mobile: logo + mode + actions) -->
+
+  <!-- Row 1: logo + nav (all screen sizes) -->
   <div class="header-row1">
     <div class="header-left">
       <span class="site-title">Hololive OCG</span>
@@ -482,6 +518,7 @@ body {
         </a>
       </nav>
     </div>
+    <!-- Desktop: mode switcher + actions live here -->
     <div class="header-center">
       <div class="mode-switcher">
         <button class="btn-mode active" id="modeEditBtn">
@@ -494,8 +531,7 @@ body {
         </button>
       </div>
     </div>
-    <!-- Desktop-only action buttons -->
-    <div class="header-right desktop-actions">
+    <div class="header-right">
       <input id="deckNameInput" type="text" placeholder="Untitled Deck" maxlength="48">
       <button class="btn btn-ghost"  id="newDeckBtn">＋ New</button>
       <button class="btn btn-ghost"  id="loadBtn">↑ Load</button>
@@ -504,25 +540,29 @@ body {
     </div>
   </div>
 
-  <!-- Row 2: mobile-only action bar (hidden on desktop) -->
-  <div class="header-row2 mobile-actions">
-    <!-- Mode switcher lives here on mobile -->
-    <div class="mode-switcher mobile-mode" id="modeSwitcherMobile">
+  <!-- Row 2: mode switcher — mobile only, full width -->
+  <div class="header-row2">
+    <div class="mode-switcher">
       <button class="btn-mode active" id="modeEditBtnMobile">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Edit
       </button>
       <button class="btn-mode" id="modeViewBtnMobile">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         View
       </button>
     </div>
+  </div>
+
+  <!-- Row 3: deck name + actions — mobile only, scrollable -->
+  <div class="header-row3">
     <input id="deckNameInputMobile" type="text" placeholder="Untitled Deck" maxlength="48">
     <button class="btn btn-ghost"  id="newDeckBtnMobile">＋ New</button>
     <button class="btn btn-ghost"  id="loadBtnMobile">↑ Load</button>
     <button class="btn btn-ghost"  id="saveBtnMobile">↓ Save</button>
     <button class="btn btn-danger" id="clearBtnMobile">✕ Clear</button>
   </div>
+
 </header>
 
 <!-- ── Page shell ── -->
