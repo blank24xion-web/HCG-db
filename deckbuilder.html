@@ -784,12 +784,36 @@ async function loadCards() {
     const res = await fetch('cards.json');
     CARDS = await res.json();
     buildFilters();
+    restoreSession();
     renderBrowser();
     renderDeck();
   } catch(e) {
     document.getElementById('browserGrid').innerHTML =
       '<div style="grid-column:1/-1;color:var(--muted);font-size:0.8rem;padding:24px;text-align:center">Could not load cards.json</div>';
   }
+}
+
+// ── Session auto-save (persists current deck across refreshes) ────────────────
+const SESSION_KEY = 'hocg_session';
+
+function saveSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ name: getDeckName(), deck }));
+  } catch(e) {}
+}
+
+function restoreSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    const { name, deck: saved } = JSON.parse(raw);
+    // Validate setcodes against loaded CARDS before restoring
+    const valid = sec => Object.fromEntries(
+      Object.entries(saved[sec] || {}).filter(([sc]) => CARDS.some(c => c.setcode === sc))
+    );
+    deck = { oshi: valid('oshi'), main: valid('main'), cheer: valid('cheer') };
+    setDeckName(name || 'Untitled Deck');
+  } catch(e) {}
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1104,6 +1128,7 @@ function renderDeck() {
 
   const fabBadge = document.getElementById('deckFabBadge');
   if (fabBadge) fabBadge.textContent = oshi+main+cheer;
+  saveSession();
 }
 
 // ── Render viewer ─────────────────────────────────────────────────────────────
@@ -1253,6 +1278,7 @@ function loadDeckText(text) {
   setDeckName(name);
   renderDeck(); renderBrowser();
   if (currentMode==='view') renderViewer();
+  saveRecent(name, text);
   toast(`Loaded: ${name}`);
 }
 
@@ -1275,6 +1301,7 @@ document.getElementById('browserSearch').addEventListener('input', renderBrowser
     document.getElementById(other).value = e.target.value;
     deck.name = e.target.value;
     if (currentMode==='view') document.getElementById('viewerDeckName').textContent = e.target.value;
+    saveSession();
   });
 });
 
@@ -1344,6 +1371,7 @@ document.getElementById('clearBtnMobile').addEventListener('click', doClear);
 function doNew() {
   if (!confirm('Start a new deck? Unsaved changes will be lost.')) return;
   deck={oshi:{},main:{},cheer:{}}; setDeckName('');
+  try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
   renderDeck(); renderBrowser(); if(currentMode==='view') renderViewer();
 }
 document.getElementById('newDeckBtn').addEventListener('click',       doNew);
