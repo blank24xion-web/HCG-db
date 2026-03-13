@@ -9,13 +9,21 @@
 /* ── Reset & tokens ─────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28; --border: #2a2a3d;
-  --accent: #c8a96e; --accent2: #7b68c8; --text: #e8e4f0; --muted: #7a7890;
+  --bg: #000000; --surface: #111118; --surface2: #1a1a24; --border: #303048;
+  --accent: #c8a96e; --accent2: #9d8fe0; --text: #ffffff; --muted: #c0bcd8;
   --white-color: #e8e0ff; --blue-color: #68b4e8; --green-color: #68c890;
   --red-color: #e87868; --colorless-color: #b0a8c8;
   --danger: #e87868; --success: #68c890;
   --header-h: 52px;
   --panel-w: 320px;
+}
+
+body.light {
+  --bg: #f5f0e8; --surface: #fffdf7; --surface2: #eee8d8; --border: #d4c9b0;
+  --accent: #a07830; --accent2: #5548a0; --text: #1a1610; --muted: #6b6050;
+  --white-color: #5548a0; --blue-color: #1a6898; --green-color: #1a7840;
+  --red-color: #c03020; --colorless-color: #5a5068;
+  --danger: #c03020; --success: #1a7840;
 }
 
 html { height: 100%; }
@@ -27,6 +35,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: background 0.2s, color 0.2s;
 }
 
 ::-webkit-scrollbar { width: 4px; }
@@ -52,7 +61,7 @@ body {
 
 .site-title {
   font-family: 'Cinzel', serif; font-size: 0.95rem; font-weight: 600; white-space: nowrap;
-  background: linear-gradient(135deg, var(--accent) 0%, #fff 50%, var(--accent2) 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--text) 50%, var(--accent2) 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 .nav-btn {
@@ -616,6 +625,7 @@ body {
       <button class="btn btn-ghost"  id="loadBtn">↑ Load</button>
       <button class="btn btn-ghost"  id="saveBtn">↓ Save</button>
       <button class="btn btn-danger" id="clearBtn">✕ Clear</button>
+      <button class="btn btn-ghost"  id="themeToggle" title="Toggle light/dark mode" style="padding:6px 8px;font-size:0.85rem">🌙</button>
     </div>
   </div>
 
@@ -640,6 +650,7 @@ body {
     <button class="btn btn-ghost"  id="loadBtnMobile">↑ Load</button>
     <button class="btn btn-ghost"  id="saveBtnMobile">↓ Save</button>
     <button class="btn btn-danger" id="clearBtnMobile">✕ Clear</button>
+    <button class="btn btn-ghost"  id="themeToggleMobile" title="Toggle light/dark mode" style="padding:6px 8px;font-size:0.85rem;flex-shrink:0">🌙</button>
   </div>
 
 </header>
@@ -1391,6 +1402,19 @@ document.getElementById('deckDrawerClose').addEventListener('click',   closeDeck
 document.getElementById('deckDrawerHandle').addEventListener('click',  closeDeckDrawer);
 document.getElementById('deckDrawerBackdrop').addEventListener('click',closeDeckDrawer);
 window.addEventListener('resize', () => renderDeck());
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+(function() {
+  const btns = [document.getElementById('themeToggle'), document.getElementById('themeToggleMobile')];
+  const apply = light => {
+    document.body.classList.toggle('light', light);
+    btns.forEach(b => { if (b) { b.textContent = light ? '🌙' : '☀️'; b.title = light ? 'Switch to dark mode' : 'Switch to light mode'; } });
+    try { localStorage.setItem('hocg_theme', light ? 'light' : 'dark'); } catch(e) {}
+  };
+  const saved = (() => { try { return localStorage.getItem('hocg_theme'); } catch(e) { return null; } })();
+  apply(saved === 'light');
+  btns.forEach(b => { if (b) b.addEventListener('click', () => apply(!document.body.classList.contains('light'))); });
+})();
 
 loadCards();
 </script>

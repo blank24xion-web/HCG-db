@@ -7,19 +7,35 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0a0f;
-    --surface: #13131a;
-    --surface2: #1c1c28;
-    --border: #2a2a3d;
+    --bg: #000000;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #303048;
     --accent: #c8a96e;
-    --accent2: #7b68c8;
-    --text: #e8e4f0;
-    --muted: #7a7890;
+    --accent2: #9d8fe0;
+    --text: #ffffff;
+    --muted: #c0bcd8;
     --white-color: #e8e0ff;
     --blue-color: #68b4e8;
     --green-color: #68c890;
     --red-color: #e87868;
     --colorless-color: #b0a8c8;
+  }
+
+  body.light {
+    --bg: #f5f0e8;
+    --surface: #fffdf7;
+    --surface2: #eee8d8;
+    --border: #d4c9b0;
+    --accent: #a07830;
+    --accent2: #5548a0;
+    --text: #1a1610;
+    --muted: #6b6050;
+    --white-color: #5548a0;
+    --blue-color: #1a6898;
+    --green-color: #1a7840;
+    --red-color: #c03020;
+    --colorless-color: #5a5068;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -31,6 +47,7 @@
     font-weight: 300;
     min-height: 100vh;
     overflow-x: hidden;
+    transition: background 0.2s, color 0.2s;
   }
 
   body::before {
@@ -46,6 +63,8 @@
     z-index: 0;
   }
 
+  body.light::before { display: none; }
+
   .wrap { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 20px; }
 
   header {
@@ -60,7 +79,7 @@
     font-size: clamp(1.6rem, 4vw, 2.8rem);
     font-weight: 900;
     letter-spacing: 0.15em;
-    background: linear-gradient(135deg, var(--accent) 0%, #fff 50%, var(--accent2) 100%);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--text) 50%, var(--accent2) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -689,10 +708,13 @@
         <div class="logo-title">hololive OCG</div>
         <div class="logo-sub">Community Card Database · Translation Reference</div>
       </div>
-      <a href="deckbuilder.html" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 14px;color:var(--muted);font-family:'Lato',sans-serif;font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        Deck Builder
-      </a>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="themeToggle" title="Toggle light/dark mode" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--muted);font-size:0.85rem;cursor:pointer;transition:all 0.15s;line-height:1">🌙</button>
+        <a href="deckbuilder.html" style="background:none;border:1px solid var(--border);border-radius:7px;padding:7px 14px;color:var(--muted);font-family:'Lato',sans-serif;font-size:0.8rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          Deck Builder
+        </a>
+      </div>
     </div>
   </header>
 
@@ -1284,6 +1306,20 @@ function resetScanner() {
 document.getElementById('openScannerBtn').addEventListener('click', openScanner);
 document.getElementById('closeScannerBtn').addEventListener('click', closeScanner);
 document.getElementById('captureBtn').addEventListener('click', captureAndMatch);
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+(function() {
+  const btn = document.getElementById('themeToggle');
+  const apply = light => {
+    document.body.classList.toggle('light', light);
+    btn.textContent = light ? '🌙' : '☀️';
+    btn.title = light ? 'Switch to dark mode' : 'Switch to light mode';
+    try { localStorage.setItem('hocg_theme', light ? 'light' : 'dark'); } catch(e) {}
+  };
+  const saved = (() => { try { return localStorage.getItem('hocg_theme'); } catch(e) { return null; } })();
+  apply(saved === 'light');
+  btn.addEventListener('click', () => apply(!document.body.classList.contains('light')));
+})();
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 loadCards();
