@@ -422,6 +422,16 @@ body {
 #pasteTextarea::placeholder { color: var(--muted); }
 .paste-confirm-row { display: flex; gap: 7px; padding: 0 16px 16px; }
 
+/* ── Recent Decks ─────────────────────────────────────────────────────────── */
+.recent-section { padding: 0 16px 4px; }
+.recent-label   { font-size: 0.62rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.recent-slot    { display: flex; align-items: center; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; margin-bottom: 5px; cursor: pointer; transition: border-color 0.15s; }
+.recent-slot:hover { border-color: var(--accent); }
+.recent-slot-name { flex: 1; font-size: 0.78rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.recent-slot-date { font-size: 0.62rem; color: var(--muted); white-space: nowrap; }
+.recent-slot-del  { font-size: 0.75rem; color: var(--muted); padding: 2px 4px; border-radius: 4px; line-height: 1; }
+.recent-slot-del:hover { color: var(--text); background: var(--border); }
+
 /* ── Toast ───────────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px);
@@ -546,6 +556,23 @@ body {
   .browser-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
   .viewer-grid  { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
   .viewer-header { padding: 8px 14px; }
+
+  /* Load modal — full-width bottom sheet on mobile */
+  #loadOverlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  #loadOverlay .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    max-height: 80vh;
+  }
+
+  /* Bigger tap targets for recent slots on mobile */
+  .recent-slot { padding: 12px 12px; }
+  .recent-slot-name { font-size: 0.85rem; }
+  .recent-slot-del  { padding: 6px 8px; font-size: 0.85rem; }
 }
 
 </style>
@@ -712,7 +739,13 @@ body {
 <!-- Load modal -->
 <div class="modal-overlay" id="loadOverlay">
   <div class="modal dialogue-modal">
+    <div class="deck-drawer-handle" id="loadModalHandle"></div>
     <div class="dialogue-header">Load Deck</div>
+    <div id="recentSection" class="recent-section" style="display:none">
+      <div class="recent-label">Recent Decks</div>
+      <div id="recentList"></div>
+      <div class="dialogue-divider" style="margin-bottom:8px">— or —</div>
+    </div>
     <div class="dialogue-actions">
       <label class="btn btn-primary dialogue-btn" style="cursor:pointer">
         ↑ Upload file <span>.hocg or .txt</span>
@@ -1137,12 +1170,69 @@ function saveDeck(ext='hocg') {
   const lines = [`#name:${name}`, '#format:hOCG-1.0', '#'];
   [...Object.entries(deck.oshi), ...Object.entries(deck.main), ...Object.entries(deck.cheer)]
     .forEach(([sc,q]) => lines.push(`${sc}:${q}`));
-  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const text = lines.join('\n');
+  const blob = new Blob([text], {type:'text/plain'});
   const a    = document.createElement('a');
   a.href     = URL.createObjectURL(blob);
   a.download = `${name.replace(/[^\w\- ]/g,'_')}.${ext}`;
   a.click(); URL.revokeObjectURL(a.href);
+  saveRecent(name, text);
   toast(`Deck saved as .${ext} ✓`);
+}
+
+// ── Recent Decks (localStorage, 4 slots) ──────────────────────────────────────
+const RECENT_KEY = 'hocg_recent';
+const RECENT_MAX = 4;
+
+function saveRecent(name, text) {
+  let slots = getRecentSlots();
+  // Remove existing entry with same name
+  slots = slots.filter(s => s.name !== name);
+  // Prepend new entry
+  slots.unshift({ name, text, date: Date.now() });
+  // Trim to max
+  slots = slots.slice(0, RECENT_MAX);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(slots)); } catch(e) {}
+}
+
+function getRecentSlots() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e) { return []; }
+}
+
+function deleteRecentSlot(name) {
+  const slots = getRecentSlots().filter(s => s.name !== name);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(slots)); } catch(e) {}
+}
+
+function renderRecentSlots() {
+  const slots = getRecentSlots();
+  const section = document.getElementById('recentSection');
+  const list    = document.getElementById('recentList');
+  if (!slots.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  list.innerHTML = slots.map(s => {
+    const d = new Date(s.date);
+    const label = d.toLocaleDateString(undefined, {month:'short', day:'numeric'});
+    const safeName = s.name.replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    return `<div class="recent-slot" data-name="${safeName}">
+      <span class="recent-slot-name">${safeName}</span>
+      <span class="recent-slot-date">${label}</span>
+      <span class="recent-slot-del" data-del="${safeName}" title="Remove">✕</span>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.recent-slot').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.del) {
+        e.stopPropagation();
+        deleteRecentSlot(e.target.dataset.del);
+        renderRecentSlots();
+        return;
+      }
+      const name = el.dataset.name;
+      const slot = getRecentSlots().find(s => s.name === name);
+      if (slot) { closeLoadModal(); loadDeckText(slot.text); }
+    });
+  });
 }
 
 function loadDeckText(text) {
@@ -1198,7 +1288,7 @@ document.getElementById('saveCancelBtn').addEventListener('click',() => document
 document.getElementById('saveOverlay').addEventListener('click',  e  => { if(e.target===e.currentTarget) document.getElementById('saveOverlay').classList.remove('open'); });
 
 // Load modal — wire both load buttons
-function openLoadOverlay() { document.getElementById('loadOverlay').classList.add('open'); }
+function openLoadOverlay() { renderRecentSlots(); document.getElementById('loadOverlay').classList.add('open'); }
 function closeLoadModal() {
   document.getElementById('loadOverlay').classList.remove('open');
   document.getElementById('pasteSection').style.display = 'none';
@@ -1208,6 +1298,26 @@ document.getElementById('loadBtn').addEventListener('click',        openLoadOver
 document.getElementById('loadBtnMobile').addEventListener('click',  openLoadOverlay);
 document.getElementById('loadCancelBtn').addEventListener('click',  closeLoadModal);
 document.getElementById('loadOverlay').addEventListener('click',    e  => { if(e.target===e.currentTarget) closeLoadModal(); });
+document.getElementById('loadModalHandle').addEventListener('click', closeLoadModal);
+
+// Swipe-down to dismiss load modal on mobile
+(function(){
+  const overlay = document.getElementById('loadOverlay');
+  const modal   = overlay.querySelector('.modal');
+  let startY = 0, dragging = false;
+  modal.addEventListener('touchstart', e => { startY = e.touches[0].clientY; dragging = true; }, {passive:true});
+  modal.addEventListener('touchmove',  e => {
+    if (!dragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) modal.style.transform = `translateY(${dy}px)`;
+  }, {passive:true});
+  modal.addEventListener('touchend', e => {
+    dragging = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    modal.style.transform = '';
+    if (dy > 80) closeLoadModal();
+  });
+})();
 document.getElementById('showPasteBtn').addEventListener('click',   () => { document.getElementById('pasteSection').style.display='block'; setTimeout(()=>document.getElementById('pasteTextarea').focus(),80); });
 document.getElementById('pasteBackBtn').addEventListener('click',   () => { document.getElementById('pasteSection').style.display='none'; document.getElementById('pasteTextarea').value=''; });
 document.getElementById('pasteConfirmBtn').addEventListener('click',() => {
