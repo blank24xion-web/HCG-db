@@ -793,6 +793,10 @@ async function loadCards() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function parseName(raw) {
   const parts = (raw || '').split('\n');
   const jp = parts[0] || '';
@@ -992,7 +996,7 @@ function openModal(card) {
       ${statsHtml}
       <div class="modal-divider"></div>
       <div class="modal-text-label">Card Text (EN)</div>
-      <div class="modal-card-text">${card.text || '—'}</div>
+      <div class="modal-card-text">${escapeHtml(card.text) || '—'}</div>
     </div>`;
 
   document.getElementById('modalOverlay').classList.add('open');
